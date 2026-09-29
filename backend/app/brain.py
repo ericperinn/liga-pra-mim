@@ -1,0 +1,177 @@
+import json
+import os
+import time
+from dataclasses import dataclass, field
+from pathlib import Path
+
+# Free-plan accounts only get the bedrock-runtime path (not Mantle), and newer models are gated.
+MODEL_ID = os.environ.get("MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0")
+TABLE_NAME = os.environ.get("TABLE_NAME", "")
+AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
+MAX_HISTORY_MESSAGES = 30
+HISTORY_TTL_SECONDS = 24 * 3600
+
+KNOWLEDGE = (Path(__file__).parent / "knowledge.md").read_text(encoding="utf-8")
+
+LANGUAGE_NAMES = {"pt_BR": "português do Brasil", "en_US": "English"}
+
+SYSTEM_PROMPT = f"""Você é a assistente do Liga pra Mim, uma linha telefônica gratuita que ajuda pessoas de baixa renda no Brasil a descobrir e acessar benefícios sociais. Muitas pessoas que ligam são idosas, não sabem ler ou nunca usaram internet. Esta é uma LIGAÇÃO: tudo que você escrever em "fala" será lido em voz alta.
+
+Como falar:
+- Frases curtas e simples, como quem conversa com um vizinho. No máximo três frases por resposta.
+- Uma pergunta por vez.
+- Nada de listas, emojis, links, endereços de site ou siglas sem explicar. Escreva valores de um jeito fácil de ouvir ("seiscentos reais").
+- Seja calorosa e paciente. Nunca faça a pessoa se sentir burra. Se não entender, peça para repetir de outro jeito.
+
+Como ajudar:
+1. Entenda a situação com perguntas simples: quantas pessoas moram na casa, quanto a casa ganha por mês somando todo mundo, se tem idoso de sessenta e cinco anos ou mais, pessoa com deficiência, criança, gestante ou estudante do ensino médio, e se a família já tem o Cadastro Único.
+2. Com base apenas na base de conhecimento abaixo, diga quais benefícios a pessoa provavelmente pode ter e o próximo passo concreto: onde ir, o que levar e para qual número ligar.
+3. Antes de terminar, resuma o próximo passo em uma frase e pergunte se pode ajudar em mais alguma coisa.
+
+Regras de segurança:
+- Nunca peça CPF, NIS, senha, dados bancários ou nome completo. Se a pessoa quiser falar, diga que não precisa.
+- Nunca prometa que a pessoa vai receber. Diga "pelo que você me contou, você pode ter direito" e explique que quem confirma é o CRAS ou o INSS.
+- Use somente a base de conhecimento. Se não souber, diga que não sabe e indique o CRAS ou o Disque Social cento e vinte e um.
+- Quando fizer sentido, avise que ninguém do governo cobra para fazer cadastro e que pedir PIX ou senha é golpe.
+- Se a pessoa falar de emergência, violência, fome grave ou vontade de se machucar, dê primeiro o número certo: SAMU cento e noventa e dois, Polícia cento e noventa, Central da Mulher cento e oitenta, CVV cento e oitenta e oito.
+- Você não é advogada nem médica.
+
+Idioma: responda sempre no idioma da ligação. Se for inglês, a pessoa provavelmente está conhecendo o projeto: explique os programas brasileiros em inglês, do mesmo jeito simples.
+
+Campos da resposta:
+- fala: o que será dito em voz alta.
+- beneficios: identificadores dos benefícios que você orientou nesta resposta, entre: cadunico, bolsa_familia, bpc, tarifa_social, pe_de_meia, farmacia_popular, carteira_idoso, emergencia. Lista vazia se nenhum.
+- encerrar: true só quando a pessoa se despedir ou disser que não precisa de mais nada; nesse caso "fala" é a despedida.
+
+<base_de_conhecimento>
+{KNOWLEDGE}
+</base_de_conhecimento>"""
+
+REPLY_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "fala": {"type": "string"},
+        "beneficios": {
+            "type": "array",
+            "items": {
+                "type": "string",
+                "enum": [
+                    "cadunico", "bolsa_familia", "bpc", "tarifa_social",
+                    "pe_de_meia", "farmacia_popular", "carteira_idoso", "emergencia",
+                ],
+            },
+        },
+        "encerrar": {"type": "boolean"},
+    },
+    "required": ["fala", "beneficios", "encerrar"],
+    "additionalProperties": False,
+}
+
+
+@dataclass
+class Reply:
+    fala: str
+    beneficios: list[str] = field(default_factory=list)
+    encerrar: bool = False
+
+
+_client = None
+_table = None
+
+
+def _get_client():
+    global _client
+    if _client is None:
+        from anthropic import AnthropicBedrock
+
+        _client = AnthropicBedrock(aws_region=AWS_REGION, timeout=15.0, max_retries=1)
+    return _client
+
+
+def _get_table():
+    global _table
+    if _table is None and TABLE_NAME:
+        import boto3
+
+        _table = boto3.resource("dynamodb").Table(TABLE_NAME)
+    return _table
+
+
+def warm_up() -> None:
+    """Opens the Bedrock and DynamoDB connections so a caller never pays for a cold container."""
+    _get_client().messages.create(model=MODEL_ID, max_tokens=1, messages=[{"role": "user", "content": "ok"}])
+    table = _get_table()
+    if table is not None:
+        table.get_item(Key={"pk": "AQUECIMENTO"})
+
+
+def load_history(session_id: str) -> list[dict]:
+    table = _get_table()
+    if table is None:
+        return []
+    item = table.get_item(Key={"pk": f"CONVERSA#{session_id}"}).get("Item")
+    return list(item["mensagens"]) if item else []
+
+
+def save_turn(session_id: str, locale: str, history: list[dict], user_text: str, reply: Reply) -> None:
+    table = _get_table()
+    if table is None:
+        return
+    now = int(time.time())
+    mensagens = history + [
+        {"role": "user", "content": user_text},
+        {"role": "assistant", "content": reply.fala},
+    ]
+    table.put_item(Item={
+        "pk": f"CONVERSA#{session_id}",
+        "mensagens": mensagens[-MAX_HISTORY_MESSAGES:],
+        "ttl": now + HISTORY_TTL_SECONDS,
+    })
+    update = "SET idioma = :idioma, atualizado = :agora, turnos = if_not_exists(turnos, :zero) + :um, inicio = if_not_exists(inicio, :agora)"
+    values = {":idioma": locale, ":agora": now, ":zero": 0, ":um": 1}
+    if reply.beneficios:
+        update += " ADD beneficios :b"
+        values[":b"] = set(reply.beneficios)
+    table.update_item(
+        Key={"pk": f"LIGACAO#{session_id}"},
+        UpdateExpression=update,
+        ExpressionAttributeValues=values,
+    )
+
+
+def parse_reply(text: str) -> Reply:
+    data = json.loads(text)
+    return Reply(
+        fala=data["fala"].strip(),
+        beneficios=list(dict.fromkeys(data.get("beneficios", []))),
+        encerrar=bool(data.get("encerrar", False)),
+    )
+
+
+def ask_model(history: list[dict], user_text: str, locale: str) -> Reply:
+    idioma = LANGUAGE_NAMES.get(locale, "português do Brasil")
+    messages = history + [{"role": "user", "content": f"[idioma da ligação: {idioma}]\n{user_text}"}]
+    response = _get_client().messages.create(
+        model=MODEL_ID,
+        max_tokens=2000,
+        system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
+        output_config={"format": {"type": "json_schema", "schema": REPLY_SCHEMA}},
+        messages=messages,
+    )
+    if response.stop_reason == "refusal":
+        raise RuntimeError("modelo recusou a resposta")
+    text = next(b.text for b in response.content if b.type == "text")
+    return parse_reply(text)
+
+
+def respond(session_id: str, locale: str, user_text: str) -> Reply:
+    t0 = time.perf_counter()
+    history = load_history(session_id)
+    t1 = time.perf_counter()
+    reply = ask_model(history, user_text, locale)
+    t2 = time.perf_counter()
+    save_turn(session_id, locale, history, user_text, reply)
+    t3 = time.perf_counter()
+    print(json.dumps({"tempo_ms": {"historico": round((t1 - t0) * 1000), "modelo": round((t2 - t1) * 1000),
+                                   "salvar": round((t3 - t2) * 1000)}, "turnos": len(history) // 2}))
+    return reply

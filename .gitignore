@@ -1,0 +1,14 @@
+node_modules/
+cdk.out/
+.venv/
+backend/build/
+__pycache__/
+*.pyc
+.pytest_cache/
+.env
+*.d.ts
+infra/*.js
+infra/bin/*.js
+infra/lib/*.js
+infra/test/*.js
+!infra/jest.config.js
