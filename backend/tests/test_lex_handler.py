@@ -77,7 +77,7 @@ def test_respond_sends_history_and_saves_turn(monkeypatch):
         assert history[-1]["content"] == "Olá!"
         return brain.Reply(fala="Entendi.", beneficios=["bpc"])
 
-    def fake_save(session_id, locale, history, text, reply):
+    def fake_save(session_id, locale, history, text, reply, canal):
         saved.update(session=session_id, text=text, reply=reply, n=len(history))
 
     monkeypatch.setattr(brain, "ask_model", fake_ask)

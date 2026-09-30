@@ -1,4 +1,6 @@
 import * as cdk from 'aws-cdk-lib';
+import * as apigw from 'aws-cdk-lib/aws-apigatewayv2';
+import * as integrations from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import * as connect from 'aws-cdk-lib/aws-connect';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as events from 'aws-cdk-lib/aws-events';
@@ -94,10 +96,19 @@ export class LigaPraMimStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
+    const code = lambdaCode();
+    const bedrockPolicy = new iam.PolicyStatement({
+      actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
+      resources: [
+        `arn:aws:bedrock:${this.region}:${this.account}:inference-profile/${MODEL_ID}`,
+        'arn:aws:bedrock:*::foundation-model/anthropic.claude-haiku-4-5*',
+      ],
+    });
+
     const cerebro = new lambda.Function(this, 'Cerebro', {
       runtime: lambda.Runtime.PYTHON_3_13,
       handler: 'lex_handler.handler',
-      code: lambdaCode(),
+      code,
       timeout: cdk.Duration.seconds(25),
       memorySize: 1024,
       environment: { TABLE_NAME: table.tableName, MODEL_ID },
@@ -107,19 +118,11 @@ export class LigaPraMimStack extends cdk.Stack {
       }),
     });
     table.grantReadWriteData(cerebro);
-    new events.Rule(this, 'Aquecimento', {
+    const aquecimento = new events.Rule(this, 'Aquecimento', {
       schedule: events.Schedule.rate(cdk.Duration.minutes(4)),
       targets: [new targets.LambdaFunction(cerebro, { event: events.RuleTargetInput.fromObject({ aquecer: true }) })],
     });
-    cerebro.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
-        resources: [
-          `arn:aws:bedrock:${this.region}:${this.account}:inference-profile/${MODEL_ID}`,
-          'arn:aws:bedrock:*::foundation-model/anthropic.claude-haiku-4-5*',
-        ],
-      }),
-    );
+    cerebro.addToRolePolicy(bedrockPolicy);
 
     const lexRole = new iam.Role(this, 'LexRole', {
       assumedBy: new iam.ServicePrincipal('lexv2.amazonaws.com'),
@@ -279,6 +282,38 @@ export class LigaPraMimStack extends cdk.Stack {
       content: this.toJsonString(flowContent),
     });
 
+    const web = new lambda.Function(this, 'Web', {
+      runtime: lambda.Runtime.PYTHON_3_13,
+      handler: 'http_handler.handler',
+      code,
+      timeout: cdk.Duration.seconds(29),
+      memorySize: 1024,
+      environment: { TABLE_NAME: table.tableName, MODEL_ID },
+      logGroup: new logs.LogGroup(this, 'WebLogs', {
+        retention: logs.RetentionDays.TWO_WEEKS,
+        removalPolicy: cdk.RemovalPolicy.DESTROY,
+      }),
+    });
+    table.grantReadWriteData(web);
+    web.addToRolePolicy(bedrockPolicy);
+    web.addToRolePolicy(new iam.PolicyStatement({ actions: ['polly:SynthesizeSpeech'], resources: ['*'] }));
+    aquecimento.addTarget(new targets.LambdaFunction(web, { event: events.RuleTargetInput.fromObject({ aquecer: true }) }));
+
+    const api = new apigw.HttpApi(this, 'Api', {
+      corsPreflight: {
+        allowOrigins: ['*'],
+        allowMethods: [apigw.CorsHttpMethod.GET, apigw.CorsHttpMethod.POST],
+        allowHeaders: ['content-type'],
+      },
+    });
+    const webIntegration = new integrations.HttpLambdaIntegration('WebIntegration', web);
+    api.addRoutes({ path: '/chat', methods: [apigw.HttpMethod.POST], integration: webIntegration });
+    api.addRoutes({ path: '/impacto', methods: [apigw.HttpMethod.GET], integration: webIntegration });
+    // Public endpoint that spends Bedrock credits: cap the whole API.
+    const defaultStage = api.defaultStage!.node.defaultChild as apigw.CfnStage;
+    defaultStage.defaultRouteSettings = { throttlingRateLimit: 3, throttlingBurstLimit: 10 };
+
+    new cdk.CfnOutput(this, 'ApiUrl', { value: api.apiEndpoint });
     new cdk.CfnOutput(this, 'FlowId', { value: flow.attrContactFlowArn });
     new cdk.CfnOutput(this, 'BotAliasArn', { value: alias.attrArn });
     new cdk.CfnOutput(this, 'TableName', { value: table.tableName });

@@ -23,7 +23,7 @@ SYSTEM_PROMPT = f"""Você é a assistente do Liga pra Mim, uma linha telefônica
 Como falar:
 - Frases curtas e simples, como quem conversa com um vizinho. No máximo três frases por resposta.
 - Uma pergunta por vez.
-- Nada de listas, emojis, links, endereços de site ou siglas sem explicar. Escreva valores de um jeito fácil de ouvir ("seiscentos reais").
+- Nada de listas, emojis, links, endereços de site ou siglas sem explicar. Escreva números sempre em algarismos, copiados exatamente da ferramenta ou da base ("600 reais", "Rua Colorado, 2000"): a voz lê os algarismos corretamente, e converter para palavras causa erros. Telefones: dígito por dígito separados por espaço, em grupos ("8 6, 9 9 4 4, 9 0 1 7").
 - Seja calorosa e paciente. Nunca faça a pessoa se sentir burra. Se não entender, peça para repetir de outro jeito.
 
 Como ajudar:
@@ -36,9 +36,9 @@ Sobre documentos, diga exatamente o que está na base de conhecimento: para o Ca
 Regras de segurança:
 - Nunca peça CPF, NIS, senha, dados bancários ou nome completo. Se a pessoa quiser falar, diga que não precisa.
 - Nunca prometa que a pessoa vai receber: nada de "tem sim" ou "você vai receber". Diga "pelo que você me contou, você pode ter direito" e explique que quem confirma é o CRAS ou o INSS.
-- Use somente a base de conhecimento. Se não souber, diga que não sabe e indique o CRAS ou o Disque Social cento e vinte e um.
+- Use somente a base de conhecimento. Se não souber, diga que não sabe e indique o CRAS ou o Disque Social 121.
 - Quando fizer sentido, avise que ninguém do governo cobra para fazer cadastro e que pedir PIX ou senha é golpe.
-- Se a pessoa falar de emergência, violência, fome grave ou vontade de se machucar, dê primeiro o número certo: SAMU cento e noventa e dois, Polícia cento e noventa, Central da Mulher cento e oitenta, CVV cento e oitenta e oito.
+- Se a pessoa falar de emergência, violência, fome grave ou vontade de se machucar, dê primeiro o número certo: SAMU 192, Polícia 190, Central da Mulher 180, CVV 188.
 - Você não é advogada nem médica.
 
 Idioma: responda sempre no idioma da ligação. Se for inglês, a pessoa provavelmente está conhecendo o projeto: explique os programas brasileiros em inglês, do mesmo jeito simples.
@@ -127,7 +127,7 @@ def load_history(session_id: str) -> list[dict]:
     return list(item["mensagens"]) if item else []
 
 
-def save_turn(session_id: str, locale: str, history: list[dict], user_text: str, reply: Reply) -> None:
+def save_turn(session_id: str, locale: str, history: list[dict], user_text: str, reply: Reply, canal: str = "telefone") -> None:
     table = _get_table()
     if table is None:
         return
@@ -141,8 +141,8 @@ def save_turn(session_id: str, locale: str, history: list[dict], user_text: str,
         "mensagens": mensagens[-MAX_HISTORY_MESSAGES:],
         "ttl": now + HISTORY_TTL_SECONDS,
     })
-    update = "SET idioma = :idioma, atualizado = :agora, turnos = if_not_exists(turnos, :zero) + :um, inicio = if_not_exists(inicio, :agora)"
-    values = {":idioma": locale, ":agora": now, ":zero": 0, ":um": 1}
+    update = "SET idioma = :idioma, canal = :canal, atualizado = :agora, turnos = if_not_exists(turnos, :zero) + :um, inicio = if_not_exists(inicio, :agora)"
+    values = {":idioma": locale, ":canal": canal, ":agora": now, ":zero": 0, ":um": 1}
     adds = []
     if reply.beneficios:
         adds.append("beneficios :b")
@@ -205,13 +205,13 @@ def ask_model(history: list[dict], user_text: str, locale: str) -> Reply:
     return reply
 
 
-def respond(session_id: str, locale: str, user_text: str) -> Reply:
+def respond(session_id: str, locale: str, user_text: str, canal: str = "telefone") -> Reply:
     t0 = time.perf_counter()
     history = load_history(session_id)
     t1 = time.perf_counter()
     reply = ask_model(history, user_text, locale)
     t2 = time.perf_counter()
-    save_turn(session_id, locale, history, user_text, reply)
+    save_turn(session_id, locale, history, user_text, reply, canal)
     t3 = time.perf_counter()
     print(json.dumps({"tempo_ms": {"historico": round((t1 - t0) * 1000), "modelo": round((t2 - t1) * 1000),
                                    "salvar": round((t3 - t2) * 1000)}, "turnos": len(history) // 2}))
