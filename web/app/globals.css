@@ -149,6 +149,52 @@ main {
   line-height: 1.5;
 }
 
+.facts {
+  margin-top: 24px;
+  max-width: var(--measure);
+}
+
+.facts summary {
+  cursor: pointer;
+  width: fit-content;
+  font-weight: 700;
+  color: var(--azul);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 2px;
+}
+
+.facts summary::marker {
+  color: var(--laranja-escuro);
+}
+
+.facts ul {
+  list-style: none;
+  margin: 20px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 18px;
+}
+
+.facts li {
+  padding-left: 16px;
+  border-left: 4px solid var(--laranja);
+}
+
+.facts li a {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: var(--step--1);
+  color: var(--tinta-suave);
+}
+
+.facts-close {
+  margin-top: 20px;
+  font-family: var(--font-display);
+  font-size: var(--step-1);
+  line-height: 1.35;
+}
+
 /* The orelhão: Brazil's public phone hood, sheltering the number anyone can call. */
 .orelhao {
   position: relative;

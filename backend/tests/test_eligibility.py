@@ -74,3 +74,22 @@ def test_farmacia_popular_sempre_disponivel():
 def test_familia_sem_pessoas_e_invalida():
     with pytest.raises(ValueError):
         avaliar(Familia(pessoas=0, renda_total_mensal=100))
+
+
+def test_aposentadoria_de_1_sm_do_idoso_nao_conta_para_bpc_do_conjuge():
+    casal = Familia(pessoas=2, renda_total_mensal=1621, idosos_60_mais=2, idosos_65_mais=2)
+    assert avaliar(casal)["beneficios"]["bpc"]["situacao"] == "possivel"
+    casal.beneficio_ate_1_sm_de_idoso_ou_pcd = 1621
+    assert avaliar(casal)["beneficios"]["bpc"]["situacao"] == "provavel"
+
+
+def test_exclusao_do_bpc_limitada_a_um_salario_minimo():
+    # Only 1621 of the declared 5000 is excluded: (5000 - 1621) / 2 is above half a minimum wage.
+    f = Familia(pessoas=2, renda_total_mensal=5000, idosos_65_mais=1, beneficio_ate_1_sm_de_idoso_ou_pcd=5000)
+    assert avaliar(f)["beneficios"]["bpc"]["situacao"] == "improvavel"
+
+
+def test_idoso_abaixo_de_65_recebe_explicacao_da_idade_do_bpc():
+    bpc = avaliar(Familia(pessoas=1, renda_total_mensal=100, idosos_60_mais=1))["beneficios"]["bpc"]
+    assert bpc["situacao"] == "improvavel"
+    assert "65" in bpc["motivo"]

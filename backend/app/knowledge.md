@@ -39,6 +39,7 @@ Fontes: gov.br (MDS, INSS, ANEEL, Ministério da Saúde, MEC) e Câmara dos Depu
   - pessoa **idosa com 65 anos ou mais**; ou
   - **pessoa com deficiência de qualquer idade** com impedimento de longo prazo (físico, mental, intelectual ou sensorial).
 - Renda da família de até **um quarto do salário mínimo por pessoa** (cerca de 405 reais). Gastos comprovados com remédios, fraldas e tratamentos que o SUS não fornece podem ser descontados da renda nessa conta. Em alguns casos o INSS aceita renda um pouco maior, após avaliação.
+- Se na casa já existe outro idoso ou pessoa com deficiência que recebe aposentadoria, pensão ou BPC de **até 1 salário mínimo**, esse valor **não entra** na conta da renda para o BPC (Lei 8.742/93, art. 20, §14). Exemplo: marido de 70 anos aposentado com 1 salário mínimo; a esposa de 70 anos sem renda pode ter direito ao BPC.
 - **Não precisa ter contribuído** para o INSS. Não é aposentadoria: não tem décimo terceiro e não deixa pensão.
 - Exigências: estar no **Cadastro Único atualizado** (nos últimos 2 anos), ter **CPF** de todos da família e ter **biometria** cadastrada (por exemplo, na carteira de identidade nova, no título de eleitor ou na carteira de motorista). Sem isso, o pedido pode ser negado ou o benefício bloqueado.
 - Como pedir: no **INSS**, pelo telefone **135** (ligação gratuita de telefone fixo), pelo aplicativo ou site **Meu INSS**, ou numa agência do INSS. Pessoa com deficiência passa por avaliação médica e social.

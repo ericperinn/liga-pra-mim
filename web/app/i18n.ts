@@ -21,6 +21,16 @@ export const T = {
     heroTitle: "Um telefonema e ela descobre o que é dela por direito.",
     heroBody:
       "Milhões de brasileiros não leem bem, não têm internet ou nunca usaram um aplicativo. O Liga pra Mim atende qualquer telefone, conversa em português simples e explica quais benefícios a família pode ter, onde ir e o que levar.",
+    readMore: "Ler mais: os números por trás do problema",
+    facts: [
+      { text: "8,4 milhões de brasileiros com 15 anos ou mais não sabem ler nem escrever. 4,8 milhões deles têm 60 anos ou mais.", source: "IBGE, PNAD Contínua Educação 2025", url: "https://biblioteca.ibge.gov.br/visualizacao/livros/liv102286_informativo.pdf" },
+      { text: "29% dos brasileiros de 15 a 64 anos são analfabetos funcionais: leem palavras, mas não entendem um texto simples.", source: "INAF 2024", url: "https://acaoeducativa.org.br/analfabetismo-funcional-nao-apresenta-melhora-e-alcanca-29-dos-brasileiros-mesmo-patamar-de-2018-aponta-novo-levantamento-do-inaf/" },
+      { text: "28 milhões de brasileiros não usam internet. 16 milhões deles têm 60 anos ou mais e 14 milhões são das classes D e E.", source: "Cetic.br, TIC Domicílios 2025", url: "https://cetic.br/media/analises/tic_domicilios_2025_principais_resultados.pdf" },
+      { text: "43,2 milhões de famílias estão no Cadastro Único. 19,3 milhões recebem Bolsa Família e 6,5 milhões de pessoas recebem o BPC.", source: "MDS, MI Social, agosto de 2026", url: "https://aplicacoes.mds.gov.br/sagi/servicos/misocial" },
+      { text: "1,8 milhão de pedidos esperavam análise no INSS, 555 mil deles além do prazo legal de 45 dias.", source: "INSS, junho de 2026", url: "https://www.gov.br/inss/pt-br/noticias/fila-do-inss-atinge-menor-patamar-em-21-meses-com-1-8-milhao-de-requerimentos" },
+      { text: "Cerca de 7,9 milhões de famílias com direito à Tarifa Social de energia não recebiam o desconto.", source: "ANEEL/MME via Agência Brasil, 2024", url: "https://agenciabrasil.ebc.com.br/geral/noticia/2024-03/quase-8-milhoes-deixam-de-usar-direito-desconto-na-energia-eletrica" },
+    ],
+    factsClose: "Quem mais precisa desses direitos é justamente quem tem mais dificuldade para ler, usar aplicativos ou esperar na fila. O telefone chega a todo mundo.",
     callLabel: "Ligue e converse",
     callNote: "Número de demonstração nos EUA. Ligações do Brasil podem ter custo da operadora; experimente de graça pelo chat abaixo.",
     chatTitle: "Converse agora, por voz ou por texto",
@@ -70,6 +80,16 @@ export const T = {
     heroTitle: "One phone call, and she finds out what is hers by right.",
     heroBody:
       "Millions of Brazilians can't read well, have no internet or have never used an app. Liga pra Mim (\"Call for Me\") answers any phone, talks in plain Portuguese and explains which public benefits a family may be entitled to, where to go and what to bring.",
+    readMore: "Read more: the numbers behind the problem",
+    facts: [
+      { text: "8.4 million Brazilians aged 15+ cannot read or write. 4.8 million of them are 60 or older.", source: "IBGE, PNAD Contínua Educação 2025", url: "https://biblioteca.ibge.gov.br/visualizacao/livros/liv102286_informativo.pdf" },
+      { text: "29% of Brazilians aged 15–64 are functionally illiterate: they can read words but not understand a simple text.", source: "INAF 2024", url: "https://acaoeducativa.org.br/analfabetismo-funcional-nao-apresenta-melhora-e-alcanca-29-dos-brasileiros-mesmo-patamar-de-2018-aponta-novo-levantamento-do-inaf/" },
+      { text: "28 million Brazilians do not use the internet. 16 million of them are 60+ and 14 million are low-income (classes D and E).", source: "Cetic.br, TIC Domicílios 2025", url: "https://cetic.br/media/analises/tic_domicilios_2025_principais_resultados.pdf" },
+      { text: "43.2 million families are in Brazil's social registry (Cadastro Único). 19.3 million receive Bolsa Família and 6.5 million people receive BPC.", source: "MDS, MI Social, August 2026", url: "https://aplicacoes.mds.gov.br/sagi/servicos/misocial" },
+      { text: "1.8 million benefit requests were waiting at the social security agency (INSS), 555,000 of them past the 45-day legal deadline.", source: "INSS, June 2026", url: "https://www.gov.br/inss/pt-br/noticias/fila-do-inss-atinge-menor-patamar-em-21-meses-com-1-8-milhao-de-requerimentos" },
+      { text: "About 7.9 million families entitled to the electricity social tariff were not getting the discount.", source: "ANEEL/MME via Agência Brasil, 2024", url: "https://agenciabrasil.ebc.com.br/geral/noticia/2024-03/quase-8-milhoes-deixam-de-usar-direito-desconto-na-energia-eletrica" },
+    ],
+    factsClose: "The people who most need these rights are the ones who find it hardest to read, use apps or wait in line. A phone reaches everyone.",
     callLabel: "Call and talk to it",
     callNote: "US demo number. Press 2 for English. Or try it for free in the chat below.",
     chatTitle: "Talk to it now, by voice or text",

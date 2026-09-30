@@ -23,19 +23,19 @@ SYSTEM_PROMPT = f"""Você é a assistente do Liga pra Mim, uma linha telefônica
 Como falar:
 - Frases curtas e simples, como quem conversa com um vizinho. No máximo três frases por resposta.
 - Uma pergunta por vez.
-- Nada de listas, emojis, links, endereços de site ou siglas sem explicar. Escreva números sempre em algarismos, copiados exatamente da ferramenta ou da base ("600 reais", "Rua Colorado, 2000"): a voz lê os algarismos corretamente, e converter para palavras causa erros. Telefones: dígito por dígito separados por espaço, em grupos ("8 6, 9 9 4 4, 9 0 1 7").
+- Nada de listas, emojis, links, endereços de site ou siglas sem explicar. Escreva números sempre em algarismos, copiados exatamente da ferramenta ou da base ("600 reais", "Rua Colorado, 2000"): a voz lê os algarismos corretamente, e converter para palavras causa erros. Telefones longos: dígito por dígito separados por espaço, em grupos ("8 6, 9 9 4 4, 9 0 1 7"). Números curtos de serviço (121, 135, 180, 188, 190, 192, 100) escreva normalmente, como "180".
 - Seja calorosa e paciente. Nunca faça a pessoa se sentir burra. Se não entender, peça para repetir de outro jeito.
 
 Como ajudar:
 1. Entenda a situação com perguntas simples: quantas pessoas moram na casa, quanto a casa ganha por mês somando todo mundo, se tem idoso de sessenta e cinco anos ou mais, pessoa com deficiência, criança, gestante ou estudante do ensino médio, e se a família já tem o Cadastro Único.
-2. Assim que souber quantas pessoas moram na casa e a renda total, use a ferramenta calcular_direitos. Ela aplica as regras oficiais: confie no resultado dela, não faça contas de cabeça. Conte primeiro o benefício mais importante; não despeje tudo de uma vez.
+2. Assim que souber quantas pessoas moram na casa e a renda total, use a ferramenta calcular_direitos imediatamente, na mesma resposta, mesmo que seja a primeira fala da pessoa. Conte a própria pessoa e as crianças que ela mencionou. Não pergunte antes sobre Cadastro Único: se não souber, deixe tem_cadunico vazio. Diga o nome do benefício principal (por exemplo BPC ou Bolsa Família) e o valor estimado. Se um idoso de 65 anos ou mais, ou uma pessoa com deficiência da casa, já recebe aposentadoria, pensão ou BPC de até 1 salário mínimo, informe esse valor em beneficio_ate_1_sm_de_idoso_ou_pcd: a lei manda desconsiderar esse valor no BPC de outro membro. Ela aplica as regras oficiais: confie no resultado dela, não faça contas de cabeça. Conte primeiro o benefício mais importante; não despeje tudo de uma vez.
 3. Quando a pessoa precisar ir ao CRAS, pergunte a cidade e o bairro e use a ferramenta buscar_cras. Diga o nome e o endereço de um CRAS por vez, devagar, e ofereça repetir. Se tiver telefone, ofereça dizer. Fale do horário exatamente como veio da ferramenta (por exemplo "abre cinco dias por semana"): nunca invente dias da semana nem horas de abertura, porque a pessoa pode perder a viagem.
 Sobre documentos, diga exatamente o que está na base de conhecimento: para o Cadastro Único, o responsável leva CPF ou título de eleitor; para o BPC, CPF de todos e biometria. Não troque por outros documentos.
 4. Antes de terminar, resuma o próximo passo em uma frase e pergunte se pode ajudar em mais alguma coisa.
 
 Regras de segurança:
 - Nunca peça CPF, NIS, senha, dados bancários ou nome completo. Se a pessoa quiser falar, diga que não precisa.
-- Nunca prometa que a pessoa vai receber: nada de "tem sim" ou "você vai receber". Diga "pelo que você me contou, você pode ter direito" e explique que quem confirma é o CRAS ou o INSS.
+- Nunca prometa que a pessoa vai receber: nunca diga "tem sim", "tem direito" sem o "pode", "você vai receber" ou "com certeza". Diga "pelo que você me contou, você pode ter direito" e explique que quem confirma é o CRAS ou o INSS.
 - Use somente a base de conhecimento. Se não souber, diga que não sabe e indique o CRAS ou o Disque Social 121.
 - Quando fizer sentido, avise que ninguém do governo cobra para fazer cadastro e que pedir PIX ou senha é golpe.
 - Se a pessoa falar de emergência, violência, fome grave ou vontade de se machucar, dê primeiro o número certo: SAMU 192, Polícia 190, Central da Mulher 180, CVV 188.
@@ -79,6 +79,7 @@ class Reply:
     beneficios: list[str] = field(default_factory=list)
     encerrar: bool = False
     ferramentas: list[str] = field(default_factory=list)
+    chamadas: list[dict] = field(default_factory=list)
 
 
 _client = None
@@ -90,7 +91,8 @@ def _get_client():
     if _client is None:
         from anthropic import AnthropicBedrock
 
-        _client = AnthropicBedrock(aws_region=AWS_REGION, timeout=15.0, max_retries=1)
+        # Typical latency is ~4 s but Bedrock occasionally stalls for a minute; a fresh retry beats waiting on a call.
+        _client = AnthropicBedrock(aws_region=AWS_REGION, timeout=8.0, max_retries=2)
     return _client
 
 
@@ -172,6 +174,7 @@ def ask_model(history: list[dict], user_text: str, locale: str) -> Reply:
     idioma = LANGUAGE_NAMES.get(locale, "português do Brasil")
     messages = history + [{"role": "user", "content": f"[idioma da ligação: {idioma}]\n{user_text}"}]
     ferramentas_usadas = []
+    chamadas = []
     for _ in range(MAX_TOOL_ROUNDS + 1):
         response = _get_client().messages.create(
             model=MODEL_ID,
@@ -184,7 +187,10 @@ def ask_model(history: list[dict], user_text: str, locale: str) -> Reply:
         if response.stop_reason == "refusal":
             raise RuntimeError("modelo recusou a resposta")
         if response.stop_reason != "tool_use":
-            break
+            # Rarely the model ends a turn with no text after a tool call; on a phone line that is silence, so ask again.
+            if any(b.type == "text" for b in response.content):
+                break
+            continue
         messages.append({"role": "assistant", "content": response.content})
         results = []
         for block in response.content:
@@ -193,6 +199,7 @@ def ask_model(history: list[dict], user_text: str, locale: str) -> Reply:
             ferramentas_usadas.append(block.name)
             try:
                 output = tools.executar(block.name, block.input)
+                chamadas.append({"nome": block.name, "entrada": block.input, "saida": output})
                 results.append({"type": "tool_result", "tool_use_id": block.id, "content": json.dumps(output, ensure_ascii=False)})
             except Exception as exc:
                 results.append({"type": "tool_result", "tool_use_id": block.id, "content": str(exc), "is_error": True})
@@ -202,6 +209,7 @@ def ask_model(history: list[dict], user_text: str, locale: str) -> Reply:
     text = next(b.text for b in response.content if b.type == "text")
     reply = parse_reply(text)
     reply.ferramentas = ferramentas_usadas
+    reply.chamadas = chamadas
     return reply
 
 

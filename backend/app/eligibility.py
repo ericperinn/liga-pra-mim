@@ -22,6 +22,9 @@ class Familia:
     gestantes_ou_amamentando: int = 0
     estudantes_ensino_medio_publico: int = 0
     tem_cadunico: bool | None = None
+    # Lei 8.742/93, art. 20, par. 14: a benefit of up to one minimum wage paid to an elderly or disabled
+    # member is not counted as family income when assessing BPC for another member.
+    beneficio_ate_1_sm_de_idoso_ou_pcd: float = 0.0
 
 
 def _resultado(situacao: str, motivo: str, valor_mensal: float | None = None, proximo_passo: str = "") -> dict:
@@ -77,14 +80,16 @@ def avaliar(f: Familia) -> dict:
         )
 
     tem_publico_bpc = f.idosos_65_mais > 0 or f.pessoas_com_deficiencia > 0
-    if tem_publico_bpc and per_capita <= quarto_sm:
+    excluido = min(max(0.0, f.beneficio_ate_1_sm_de_idoso_ou_pcd), SALARIO_MINIMO)
+    per_capita_bpc = max(0.0, renda - excluido) / f.pessoas
+    if tem_publico_bpc and per_capita_bpc <= quarto_sm:
         beneficios["bpc"] = _resultado(
             "provavel",
             "tem idoso de 65 anos ou mais ou pessoa com deficiência, e renda até um quarto do salário mínimo por pessoa",
             SALARIO_MINIMO,
             f"{cad_passo} Depois pedir o BPC no INSS pelo 135 ou pelo Meu INSS. Precisa de biometria e CPF de todos.",
         )
-    elif tem_publico_bpc and per_capita <= meio_sm:
+    elif tem_publico_bpc and per_capita_bpc <= meio_sm:
         beneficios["bpc"] = _resultado(
             "possivel",
             "renda um pouco acima de um quarto do salário mínimo; gastos com remédios e fraldas podem ser descontados e o INSS avalia",
@@ -93,6 +98,12 @@ def avaliar(f: Familia) -> dict:
         )
     elif tem_publico_bpc:
         beneficios["bpc"] = _resultado("improvavel", "renda por pessoa acima de meio salário mínimo")
+    elif f.idosos_60_mais > 0:
+        beneficios["bpc"] = _resultado(
+            "improvavel",
+            "o BPC para idosos exige 65 anos ou mais; antes disso, só se houver deficiência",
+            proximo_passo="Voltar a perguntar quando completar 65 anos. Enquanto isso, ver o Cadastro Único e a Carteira da Pessoa Idosa.",
+        )
 
     if per_capita <= meio_sm:
         beneficios["tarifa_social"] = _resultado(

@@ -26,12 +26,16 @@ TOOLS = [
                 "renda_total_mensal": {"type": "number", "description": "Soma do que todos da casa ganham por mês, em reais. Sem Bolsa Família."},
                 "idosos_60_mais": {"type": "integer"},
                 "idosos_65_mais": {"type": "integer"},
-                "pessoas_com_deficiencia": {"type": "integer"},
+                "pessoas_com_deficiencia": {"type": "integer", "description": "Pessoas de qualquer idade com deficiência ou impedimento de longo prazo: física (ex.: cadeirante), intelectual, visual, auditiva, autismo (TEA), paralisia cerebral, doença mental grave."},
                 "criancas_0_6": {"type": "integer"},
                 "criancas_7_17": {"type": "integer"},
                 "gestantes_ou_amamentando": {"type": "integer"},
                 "estudantes_ensino_medio_publico": {"type": "integer"},
                 "tem_cadunico": {"type": ["boolean", "null"]},
+                "beneficio_ate_1_sm_de_idoso_ou_pcd": {
+                    "type": "number",
+                    "description": "Valor de aposentadoria, pensão ou BPC de até 1 salário mínimo que um idoso ou pessoa com deficiência da casa já recebe. Já incluído na renda total; a lei manda desconsiderar no cálculo do BPC.",
+                },
             },
             "required": ["pessoas", "renda_total_mensal"],
         },
@@ -127,6 +131,7 @@ def executar(nome: str, entrada: dict) -> dict:
             gestantes_ou_amamentando=_int(entrada, "gestantes_ou_amamentando"),
             estudantes_ensino_medio_publico=_int(entrada, "estudantes_ensino_medio_publico"),
             tem_cadunico=entrada.get("tem_cadunico"),
+            beneficio_ate_1_sm_de_idoso_ou_pcd=float(entrada.get("beneficio_ate_1_sm_de_idoso_ou_pcd") or 0),
         )
         return avaliar(familia)
     if nome == "buscar_cras":

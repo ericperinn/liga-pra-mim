@@ -33,6 +33,20 @@ export default function Home() {
             <p className="brand-line">{t.brandLine}</p>
             <h1>{t.heroTitle}</h1>
             <p className="lead">{t.heroBody}</p>
+            <details className="facts">
+              <summary>{t.readMore}</summary>
+              <ul>
+                {t.facts.map((f) => (
+                  <li key={f.url}>
+                    <p>{f.text}</p>
+                    <a href={f.url} target="_blank" rel="noopener noreferrer">
+                      {f.source}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+              <p className="facts-close">{t.factsClose}</p>
+            </details>
           </div>
 
           <div className="orelhao" aria-label={t.callLabel}>
