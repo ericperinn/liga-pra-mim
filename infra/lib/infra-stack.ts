@@ -33,6 +33,8 @@ function lambdaCode(): lambda.Code {
   for (const f of fs.readdirSync(appDir)) {
     if (f.endsWith('.py') || f.endsWith('.md')) fs.copyFileSync(path.join(appDir, f), path.join(buildDir, f));
   }
+  const dataDir = path.join(appDir, 'data');
+  if (fs.existsSync(dataDir)) fs.cpSync(dataDir, path.join(buildDir, 'data'), { recursive: true });
   return lambda.Code.fromAsset(buildDir);
 }
 

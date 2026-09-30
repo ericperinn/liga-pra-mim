@@ -4,11 +4,14 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import tools
+
 # Free-plan accounts only get the bedrock-runtime path (not Mantle), and newer models are gated.
 MODEL_ID = os.environ.get("MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0")
 TABLE_NAME = os.environ.get("TABLE_NAME", "")
 AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
 MAX_HISTORY_MESSAGES = 30
+MAX_TOOL_ROUNDS = 3
 HISTORY_TTL_SECONDS = 24 * 3600
 
 KNOWLEDGE = (Path(__file__).parent / "knowledge.md").read_text(encoding="utf-8")
@@ -25,8 +28,9 @@ Como falar:
 
 Como ajudar:
 1. Entenda a situação com perguntas simples: quantas pessoas moram na casa, quanto a casa ganha por mês somando todo mundo, se tem idoso de sessenta e cinco anos ou mais, pessoa com deficiência, criança, gestante ou estudante do ensino médio, e se a família já tem o Cadastro Único.
-2. Com base apenas na base de conhecimento abaixo, diga quais benefícios a pessoa provavelmente pode ter e o próximo passo concreto: onde ir, o que levar e para qual número ligar.
-3. Antes de terminar, resuma o próximo passo em uma frase e pergunte se pode ajudar em mais alguma coisa.
+2. Assim que souber quantas pessoas moram na casa e a renda total, use a ferramenta calcular_direitos. Ela aplica as regras oficiais: confie no resultado dela, não faça contas de cabeça. Conte primeiro o benefício mais importante; não despeje tudo de uma vez.
+3. Quando a pessoa precisar ir ao CRAS, pergunte a cidade e o bairro e use a ferramenta buscar_cras. Diga o nome e o endereço de um CRAS por vez, devagar, e ofereça repetir. Se tiver telefone, ofereça dizer.
+4. Antes de terminar, resuma o próximo passo em uma frase e pergunte se pode ajudar em mais alguma coisa.
 
 Regras de segurança:
 - Nunca peça CPF, NIS, senha, dados bancários ou nome completo. Se a pessoa quiser falar, diga que não precisa.
@@ -73,6 +77,7 @@ class Reply:
     fala: str
     beneficios: list[str] = field(default_factory=list)
     encerrar: bool = False
+    ferramentas: list[str] = field(default_factory=list)
 
 
 _client = None
@@ -129,9 +134,15 @@ def save_turn(session_id: str, locale: str, history: list[dict], user_text: str,
     })
     update = "SET idioma = :idioma, atualizado = :agora, turnos = if_not_exists(turnos, :zero) + :um, inicio = if_not_exists(inicio, :agora)"
     values = {":idioma": locale, ":agora": now, ":zero": 0, ":um": 1}
+    adds = []
     if reply.beneficios:
-        update += " ADD beneficios :b"
+        adds.append("beneficios :b")
         values[":b"] = set(reply.beneficios)
+    if reply.ferramentas:
+        adds.append("ferramentas :f")
+        values[":f"] = set(reply.ferramentas)
+    if adds:
+        update += " ADD " + ", ".join(adds)
     table.update_item(
         Key={"pk": f"LIGACAO#{session_id}"},
         UpdateExpression=update,
@@ -151,17 +162,38 @@ def parse_reply(text: str) -> Reply:
 def ask_model(history: list[dict], user_text: str, locale: str) -> Reply:
     idioma = LANGUAGE_NAMES.get(locale, "português do Brasil")
     messages = history + [{"role": "user", "content": f"[idioma da ligação: {idioma}]\n{user_text}"}]
-    response = _get_client().messages.create(
-        model=MODEL_ID,
-        max_tokens=2000,
-        system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
-        output_config={"format": {"type": "json_schema", "schema": REPLY_SCHEMA}},
-        messages=messages,
-    )
-    if response.stop_reason == "refusal":
-        raise RuntimeError("modelo recusou a resposta")
+    ferramentas_usadas = []
+    for _ in range(MAX_TOOL_ROUNDS + 1):
+        response = _get_client().messages.create(
+            model=MODEL_ID,
+            max_tokens=2000,
+            system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
+            tools=tools.TOOLS,
+            output_config={"format": {"type": "json_schema", "schema": REPLY_SCHEMA}},
+            messages=messages,
+        )
+        if response.stop_reason == "refusal":
+            raise RuntimeError("modelo recusou a resposta")
+        if response.stop_reason != "tool_use":
+            break
+        messages.append({"role": "assistant", "content": response.content})
+        results = []
+        for block in response.content:
+            if block.type != "tool_use":
+                continue
+            ferramentas_usadas.append(block.name)
+            try:
+                output = tools.executar(block.name, block.input)
+                results.append({"type": "tool_result", "tool_use_id": block.id, "content": json.dumps(output, ensure_ascii=False)})
+            except Exception as exc:
+                results.append({"type": "tool_result", "tool_use_id": block.id, "content": str(exc), "is_error": True})
+        messages.append({"role": "user", "content": results})
+    else:
+        raise RuntimeError("limite de chamadas de ferramenta atingido")
     text = next(b.text for b in response.content if b.type == "text")
-    return parse_reply(text)
+    reply = parse_reply(text)
+    reply.ferramentas = ferramentas_usadas
+    return reply
 
 
 def respond(session_id: str, locale: str, user_text: str) -> Reply:
