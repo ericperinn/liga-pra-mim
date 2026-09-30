@@ -413,6 +413,10 @@ main {
   max-width: 30ch;
 }
 
+.impact-loading {
+  color: var(--tinta-suave);
+}
+
 .impact-channels,
 .impact-privacy {
   color: var(--tinta-suave);

@@ -24,15 +24,15 @@ export default function Impact({ lang }: { lang: Lang }) {
     };
   }, []);
 
-  if (!stats) return null;
-
-  const bars = Object.entries(stats.beneficios_orientados).filter(([k]) => k in BENEFIT_NAMES);
+  const bars = stats ? Object.entries(stats.beneficios_orientados).filter(([k]) => k in BENEFIT_NAMES) : [];
   const max = Math.max(1, ...bars.map(([, n]) => n));
 
   return (
-    <section className="impact" aria-labelledby="impact-title">
+    <section className="impact" aria-labelledby="impact-title" aria-busy={!stats}>
       <h2 id="impact-title">{t.impactTitle}</h2>
-      {stats.conversas === 0 ? (
+      {!stats ? (
+        <p className="impact-sentence impact-loading">{t.impactLoading}</p>
+      ) : stats.conversas === 0 ? (
         <p className="impact-sentence">{t.impactEmpty}</p>
       ) : (
         <>

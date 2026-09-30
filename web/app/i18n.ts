@@ -46,6 +46,7 @@ export const T = {
       "Onde fica o CRAS em Campinas, bairro Satélite Íris?",
     ],
     impactTitle: "Impacto ao vivo",
+    impactLoading: "Carregando os números…",
     impactSentence: (c: number, calc: number, cras: number) =>
       `Até agora foram ${c} conversas. Em ${calc} delas a assistente calculou os direitos da família com as regras oficiais, e ${cras} vezes encontrou o CRAS mais perto de quem ligou.`,
     impactChannels: (tel: number, web: number) => `${tel} por telefone, ${web} pelo site.`,
@@ -94,6 +95,7 @@ export const T = {
       "Where is the nearest CRAS in Campinas, Satélite Íris neighborhood?",
     ],
     impactTitle: "Live impact",
+    impactLoading: "Loading the numbers…",
     impactSentence: (c: number, calc: number, cras: number) =>
       `So far there have been ${c} conversations. In ${calc} of them the assistant worked out the family's rights using the official rules, and ${cras} times it found the social assistance center (CRAS) nearest to the caller.`,
     impactChannels: (tel: number, web: number) => `${tel} by phone, ${web} on the web.`,
