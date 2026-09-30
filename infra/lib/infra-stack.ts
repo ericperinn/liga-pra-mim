@@ -301,7 +301,7 @@ export class LigaPraMimStack extends cdk.Stack {
 
     const api = new apigw.HttpApi(this, 'Api', {
       corsPreflight: {
-        allowOrigins: ['*'],
+        allowOrigins: [requireEnv('SITE_URL'), 'http://localhost:3000'],
         allowMethods: [apigw.CorsHttpMethod.GET, apigw.CorsHttpMethod.POST],
         allowHeaders: ['content-type'],
       },

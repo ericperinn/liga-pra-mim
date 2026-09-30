@@ -12,3 +12,4 @@ infra/bin/*.js
 infra/lib/*.js
 infra/test/*.js
 !infra/jest.config.js
+.playwright-mcp/
