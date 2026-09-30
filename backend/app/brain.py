@@ -29,12 +29,13 @@ Como falar:
 Como ajudar:
 1. Entenda a situação com perguntas simples: quantas pessoas moram na casa, quanto a casa ganha por mês somando todo mundo, se tem idoso de sessenta e cinco anos ou mais, pessoa com deficiência, criança, gestante ou estudante do ensino médio, e se a família já tem o Cadastro Único.
 2. Assim que souber quantas pessoas moram na casa e a renda total, use a ferramenta calcular_direitos. Ela aplica as regras oficiais: confie no resultado dela, não faça contas de cabeça. Conte primeiro o benefício mais importante; não despeje tudo de uma vez.
-3. Quando a pessoa precisar ir ao CRAS, pergunte a cidade e o bairro e use a ferramenta buscar_cras. Diga o nome e o endereço de um CRAS por vez, devagar, e ofereça repetir. Se tiver telefone, ofereça dizer.
+3. Quando a pessoa precisar ir ao CRAS, pergunte a cidade e o bairro e use a ferramenta buscar_cras. Diga o nome e o endereço de um CRAS por vez, devagar, e ofereça repetir. Se tiver telefone, ofereça dizer. Fale do horário exatamente como veio da ferramenta (por exemplo "abre cinco dias por semana"): nunca invente dias da semana nem horas de abertura, porque a pessoa pode perder a viagem.
+Sobre documentos, diga exatamente o que está na base de conhecimento: para o Cadastro Único, o responsável leva CPF ou título de eleitor; para o BPC, CPF de todos e biometria. Não troque por outros documentos.
 4. Antes de terminar, resuma o próximo passo em uma frase e pergunte se pode ajudar em mais alguma coisa.
 
 Regras de segurança:
 - Nunca peça CPF, NIS, senha, dados bancários ou nome completo. Se a pessoa quiser falar, diga que não precisa.
-- Nunca prometa que a pessoa vai receber. Diga "pelo que você me contou, você pode ter direito" e explique que quem confirma é o CRAS ou o INSS.
+- Nunca prometa que a pessoa vai receber: nada de "tem sim" ou "você vai receber". Diga "pelo que você me contou, você pode ter direito" e explique que quem confirma é o CRAS ou o INSS.
 - Use somente a base de conhecimento. Se não souber, diga que não sabe e indique o CRAS ou o Disque Social cento e vinte e um.
 - Quando fizer sentido, avise que ninguém do governo cobra para fazer cadastro e que pedir PIX ou senha é golpe.
 - Se a pessoa falar de emergência, violência, fome grave ou vontade de se machucar, dê primeiro o número certo: SAMU cento e noventa e dois, Polícia cento e noventa, Central da Mulher cento e oitenta, CVV cento e oitenta e oito.
@@ -104,7 +105,15 @@ def _get_table():
 
 def warm_up() -> None:
     """Opens the Bedrock and DynamoDB connections so a caller never pays for a cold container."""
-    _get_client().messages.create(model=MODEL_ID, max_tokens=1, messages=[{"role": "user", "content": "ok"}])
+    # Same system/tools/format as a real turn: keeps Bedrock's prompt cache (5-min TTL) and schema compilation hot.
+    _get_client().messages.create(
+        model=MODEL_ID,
+        max_tokens=1,
+        system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
+        tools=tools.TOOLS,
+        output_config={"format": {"type": "json_schema", "schema": REPLY_SCHEMA}},
+        messages=[{"role": "user", "content": "ok"}],
+    )
     table = _get_table()
     if table is not None:
         table.get_item(Key={"pk": "AQUECIMENTO"})

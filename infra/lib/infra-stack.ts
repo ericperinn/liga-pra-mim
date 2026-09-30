@@ -108,7 +108,7 @@ export class LigaPraMimStack extends cdk.Stack {
     });
     table.grantReadWriteData(cerebro);
     new events.Rule(this, 'Aquecimento', {
-      schedule: events.Schedule.rate(cdk.Duration.minutes(5)),
+      schedule: events.Schedule.rate(cdk.Duration.minutes(4)),
       targets: [new targets.LambdaFunction(cerebro, { event: events.RuleTargetInput.fromObject({ aquecer: true }) })],
     });
     cerebro.addToRolePolicy(
