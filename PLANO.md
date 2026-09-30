@@ -68,6 +68,9 @@
 | Stack CDK | `LigaPraMim` (Lambda `Cerebro`, DynamoDB `Conversas`, bot Lex `LigaPraMim`) — `cd infra && npx cdk deploy` |
 | Fluxo principal (no número) | `Liga pra Mim - Principal` · `a2e0a831-55b4-44e4-8154-31a463306723` |
 | Bot Lex | id `OKDJVPLUZ2`, alias `producao` `VKUI7VBEXA` |
+| Site (URL pública) | https://main.d3197h98vf4n1z.amplifyapp.com — publicar com `bash web/deploy.sh` |
+| API do site | https://pagvobwo9e.execute-api.us-east-1.amazonaws.com (`POST /chat`, `GET /impacto`) |
+| Repositório | https://github.com/ericperinn/liga-pra-mim (privado) |
 | Modelo | `us.anthropic.claude-sonnet-4-6` via Bedrock (Opus 5/Sonnet 5 bloqueados no Free Plan; Mantle idem) |
 
 ## Custos estimados (hackathon inteiro)
