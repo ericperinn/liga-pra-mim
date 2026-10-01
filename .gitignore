@@ -14,3 +14,5 @@ infra/test/*.js
 !infra/jest.config.js
 .playwright-mcp/
 ideias-hackathon.md
+demo/.venv/
+demo/out/
