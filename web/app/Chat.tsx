@@ -27,8 +27,10 @@ export default function Chat({ lang }: { lang: Lang }) {
   const audio = useRef<HTMLAudioElement | null>(null);
   const log = useRef<HTMLOListElement>(null);
 
+  // Scroll only the message list: scrollIntoView would also scroll the page and yank visitors past the hero on load.
   useEffect(() => {
-    log.current?.lastElementChild?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    const el = log.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [messages, busy]);
 
   useEffect(() => () => audio.current?.pause(), []);
