@@ -6,6 +6,8 @@ from pathlib import Path
 
 import tools
 
+# "bedrock" (default) or "anthropic" (Claude API, key read from SSM) — the fallback if Bedrock access is lost.
+LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "bedrock")
 # Free-plan accounts only get the bedrock-runtime path (not Mantle), and newer models are gated.
 MODEL_ID = os.environ.get("MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0")
 TABLE_NAME = os.environ.get("TABLE_NAME", "")
@@ -86,13 +88,25 @@ _client = None
 _table = None
 
 
+def _anthropic_api_key() -> str:
+    import boto3
+
+    param = boto3.client("ssm").get_parameter(Name=os.environ["ANTHROPIC_API_KEY_PARAM"], WithDecryption=True)
+    return param["Parameter"]["Value"]
+
+
 def _get_client():
     global _client
     if _client is None:
-        from anthropic import AnthropicBedrock
+        # Typical latency is ~4 s but the model occasionally stalls for a minute; a fresh retry beats waiting on a call.
+        if LLM_PROVIDER == "anthropic":
+            from anthropic import Anthropic
 
-        # Typical latency is ~4 s but Bedrock occasionally stalls for a minute; a fresh retry beats waiting on a call.
-        _client = AnthropicBedrock(aws_region=AWS_REGION, timeout=8.0, max_retries=2)
+            _client = Anthropic(api_key=_anthropic_api_key(), timeout=8.0, max_retries=2)
+        else:
+            from anthropic import AnthropicBedrock
+
+            _client = AnthropicBedrock(aws_region=AWS_REGION, timeout=8.0, max_retries=2)
     return _client
 
 

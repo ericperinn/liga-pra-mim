@@ -19,6 +19,9 @@ import { requireEnv } from './config';
 
 const CONNECT_INSTANCE_ARN = requireEnv('CONNECT_INSTANCE_ARN');
 const MODEL_ID = requireEnv('MODEL_ID');
+const LLM_PROVIDER = process.env.LLM_PROVIDER ?? 'bedrock';
+const WARMUP_ENABLED = (process.env.WARMUP_ENABLED ?? 'true') === 'true';
+const ANTHROPIC_API_KEY_PARAM = '/liga-pra-mim/anthropic-api-key';
 const LOCALES = ['pt_BR', 'en_US'];
 const BACKEND_DIR = path.join(__dirname, '..', '..', 'backend');
 
@@ -111,7 +114,7 @@ export class LigaPraMimStack extends cdk.Stack {
       code,
       timeout: cdk.Duration.seconds(25),
       memorySize: 1024,
-      environment: { TABLE_NAME: table.tableName, MODEL_ID },
+      environment: { TABLE_NAME: table.tableName, MODEL_ID, LLM_PROVIDER, ANTHROPIC_API_KEY_PARAM },
       logGroup: new logs.LogGroup(this, 'CerebroLogs', {
         retention: logs.RetentionDays.TWO_WEEKS,
         removalPolicy: cdk.RemovalPolicy.DESTROY,
@@ -119,10 +122,16 @@ export class LigaPraMimStack extends cdk.Stack {
     });
     table.grantReadWriteData(cerebro);
     const aquecimento = new events.Rule(this, 'Aquecimento', {
+      enabled: WARMUP_ENABLED,
       schedule: events.Schedule.rate(cdk.Duration.minutes(4)),
       targets: [new targets.LambdaFunction(cerebro, { event: events.RuleTargetInput.fromObject({ aquecer: true }) })],
     });
     cerebro.addToRolePolicy(bedrockPolicy);
+    const apiKeyPolicy = new iam.PolicyStatement({
+      actions: ['ssm:GetParameter'],
+      resources: [`arn:aws:ssm:${this.region}:${this.account}:parameter${ANTHROPIC_API_KEY_PARAM}`],
+    });
+    cerebro.addToRolePolicy(apiKeyPolicy);
 
     const lexRole = new iam.Role(this, 'LexRole', {
       assumedBy: new iam.ServicePrincipal('lexv2.amazonaws.com'),
@@ -288,7 +297,7 @@ export class LigaPraMimStack extends cdk.Stack {
       code,
       timeout: cdk.Duration.seconds(29),
       memorySize: 1024,
-      environment: { TABLE_NAME: table.tableName, MODEL_ID },
+      environment: { TABLE_NAME: table.tableName, MODEL_ID, LLM_PROVIDER, ANTHROPIC_API_KEY_PARAM },
       logGroup: new logs.LogGroup(this, 'WebLogs', {
         retention: logs.RetentionDays.TWO_WEEKS,
         removalPolicy: cdk.RemovalPolicy.DESTROY,
@@ -296,6 +305,7 @@ export class LigaPraMimStack extends cdk.Stack {
     });
     table.grantReadWriteData(web);
     web.addToRolePolicy(bedrockPolicy);
+    web.addToRolePolicy(apiKeyPolicy);
     web.addToRolePolicy(new iam.PolicyStatement({ actions: ['polly:SynthesizeSpeech'], resources: ['*'] }));
     aquecimento.addTarget(new targets.LambdaFunction(web, { event: events.RuleTargetInput.fromObject({ aquecer: true }) }));
 
