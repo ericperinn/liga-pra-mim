@@ -1,0 +1,45 @@
+{
+  "voice": "Matthew",
+  "segments": [
+    {
+      "id": "problem",
+      "visual": "card:title",
+      "text": "Twenty-eight million Brazilians don't use the internet. More than eight million can't read. Yet the country's social benefits are explained on websites and apps."
+    },
+    {
+      "id": "solution",
+      "visual": "site:hero",
+      "text": "Liga pra Mim, which means Call for Me, is a phone line. You call, you talk, and an AI assistant explains which benefits your family may be entitled to, where to go, and what to bring."
+    },
+    {
+      "id": "call",
+      "visual": "call",
+      "text": ""
+    },
+    {
+      "id": "web",
+      "visual": "site:chat",
+      "text": "The same assistant also answers on the web, by voice or text. It asks one question at a time, never asks for ID numbers, and never promises approval."
+    },
+    {
+      "id": "architecture",
+      "visual": "image:../docs/architecture.png",
+      "text": "Under the hood, Amazon Connect and Lex handle the call. A Lambda function talks to Claude on Amazon Bedrock, and the model calls two tools: a calculator with the official 2026 rules, and the government's list of eight thousand six hundred social assistance centers."
+    },
+    {
+      "id": "evaluation",
+      "visual": "card:evaluation",
+      "text": "We tested it with twenty-five real conversations in Portuguese and English. It passed all twenty-five. And if the AI ever goes down, an essential mode keeps the line answering."
+    },
+    {
+      "id": "impact",
+      "visual": "site:impact",
+      "text": "Built from zero with Claude Code, by someone who had never used AWS before. Because a right you can't find is a right you don't have."
+    },
+    {
+      "id": "end",
+      "visual": "card:end",
+      "text": ""
+    }
+  ]
+}

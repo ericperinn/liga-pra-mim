@@ -71,6 +71,12 @@ class Director:
     def __init__(self, page: Page):
         self.page = page
         self.x, self.y = 640, 360
+        self.t0 = time.monotonic()
+        self.chapters: dict[str, float] = {}
+
+    def mark(self, name: str) -> None:
+        """Records when a part of the walkthrough starts, so the video builder can cut by topic."""
+        self.chapters[name] = round(time.monotonic() - self.t0, 2)
 
     def scroll_to(self, selector: str, offset: int = -24, duration: int = 1800, hold: float = 1.5) -> None:
         y = self.page.evaluate(
@@ -121,6 +127,7 @@ def install_replay(page: Page, answer: str) -> None:
 
 def walkthrough(d: Director, lang: str, question: str | None) -> None:
     page = d.page
+    d.mark("start")
     page.goto(SITE, wait_until="load")
     page.wait_for_selector("h1")
     page.mouse.move(d.x, d.y)
@@ -129,12 +136,14 @@ def walkthrough(d: Director, lang: str, question: str | None) -> None:
         page.click("button.lang")
     time.sleep(2.5)
 
+    d.mark("hero")
     d.move_to(".aparelho", steps=40)
     time.sleep(1.5)
     d.click(".facts summary")
     d.scroll_by(380, duration=2600, hold=2.5)
     d.scroll_by(380, duration=2600, hold=3.0)
 
+    d.mark("chat")
     d.scroll_to(".chat", duration=2200, hold=1.0)
     if question:
         d.click("#chat-input")
@@ -151,8 +160,10 @@ def walkthrough(d: Director, lang: str, question: str | None) -> None:
         d.move_to(".suggestions button")
         time.sleep(2.5)
 
+    d.mark("impact")
     d.scroll_to(".impact", duration=2400, hold=4.5)
     d.scroll_to(".how", duration=2400, hold=5.5)
+    d.mark("end")
 
 
 def main() -> None:
@@ -181,13 +192,15 @@ def main() -> None:
         page.add_init_script(CURSOR_JS)
         if args.replay:
             install_replay(page, answer)
-        walkthrough(Director(page), args.lang, question)
+        director = Director(page)
+        walkthrough(director, args.lang, question)
         video = page.video.path()
         context.close()
         browser.close()
 
     target = OUT / f"site-{args.lang}.webm"
     shutil.move(video, target)
+    (OUT / f"site-{args.lang}.chapters.json").write_text(json.dumps(director.chapters, indent=2), encoding="utf-8")
     shutil.rmtree(raw_dir, ignore_errors=True)
     print(target)
 
