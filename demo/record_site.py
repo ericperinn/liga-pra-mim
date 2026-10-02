@@ -125,7 +125,7 @@ def install_replay(page: Page, answer: str) -> None:
     )
 
 
-def walkthrough(d: Director, lang: str, question: str | None) -> None:
+def walkthrough(d: Director, lang: str, question: str | None, conversation: list[str] | None = None) -> None:
     page = d.page
     d.mark("start")
     page.goto(SITE, wait_until="load")
@@ -145,7 +145,18 @@ def walkthrough(d: Director, lang: str, question: str | None) -> None:
 
     d.mark("chat")
     d.scroll_to(".chat", duration=2200, hold=1.0)
-    if question:
+    if conversation:
+        d.scroll_to(".chat-panel", offset=-40, duration=1200, hold=0.3)
+        for n, message in enumerate(conversation):
+            d.click("#chat-input")
+            page.keyboard.type(message, delay=30)
+            time.sleep(0.3)
+            d.click("button.send")
+            page.wait_for_function("n => document.querySelectorAll('.msg-assistant:not(.msg-thinking)').length > n", arg=n + 1, timeout=60_000)
+            # longer pauses where the answer carries the result
+            time.sleep(4.5 if len(page.locator(".msg-assistant").last.inner_text()) > 160 else 1.2)
+        time.sleep(1.5)
+    elif question:
         d.click("#chat-input")
         page.keyboard.type(question, delay=38)
         time.sleep(0.6)
@@ -171,6 +182,7 @@ def main() -> None:
     parser.add_argument("--lang", choices=["en", "pt"], default="en")
     parser.add_argument("--ask", help="question to type in the chat (live AI)")
     parser.add_argument("--replay", action="store_true", help="answer with a real reply captured earlier")
+    parser.add_argument("--conversation", nargs="+", help="several messages sent in turn (live)")
     args = parser.parse_args()
 
     question = args.ask
@@ -190,10 +202,11 @@ def main() -> None:
         )
         page = context.new_page()
         page.add_init_script(CURSOR_JS)
+        page.add_init_script("try { sessionStorage.clear() } catch (e) {}")
         if args.replay:
             install_replay(page, answer)
         director = Director(page)
-        walkthrough(director, args.lang, question)
+        walkthrough(director, args.lang, question, args.conversation)
         video = page.video.path()
         context.close()
         browser.close()

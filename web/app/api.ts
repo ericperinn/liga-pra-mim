@@ -1,6 +1,6 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
-export type ChatReply = { fala: string; beneficios: string[]; encerrar: boolean; audio?: string };
+export type ChatReply = { fala: string; beneficios: string[]; encerrar: boolean; audio?: string; modo?: "ia" | "essencial" };
 
 export type ImpactStats = {
   conversas: number;

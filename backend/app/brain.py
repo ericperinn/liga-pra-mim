@@ -86,6 +86,7 @@ class Reply:
     encerrar: bool = False
     ferramentas: list[str] = field(default_factory=list)
     chamadas: list[dict] = field(default_factory=list)
+    modo: str = "ia"
 
 
 _client = None
@@ -262,6 +263,7 @@ def respond(session_id: str, locale: str, user_text: str, canal: str = "telefone
             _llm_down_until = time.time() + LLM_COOLDOWN_SECONDS[kind]
             print(json.dumps({"falha_modelo": type(exc).__name__, "tipo": kind, "detalhe": str(exc)[:300]}))
             reply, modo = _essential_reply(session_id, locale, user_text), "essencial"
+    reply.modo = modo
     t2 = time.perf_counter()
     save_turn(session_id, locale, history, user_text, reply, canal)
     t3 = time.perf_counter()

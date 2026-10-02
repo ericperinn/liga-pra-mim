@@ -25,7 +25,7 @@ def test_chat_uses_web_channel_and_prefixed_session(monkeypatch):
     monkeypatch.setattr(brain, "respond", fake_respond)
     out = post({"sessionId": SESSION, "text": "oi", "locale": "pt_BR"})
     assert out["statusCode"] == 200
-    assert json.loads(out["body"]) == {"fala": "Oi!", "beneficios": ["bpc"], "encerrar": False}
+    assert json.loads(out["body"]) == {"fala": "Oi!", "beneficios": ["bpc"], "encerrar": False, "modo": "ia"}
     assert seen == {"session": f"web-{SESSION}", "canal": "web"}
 
 

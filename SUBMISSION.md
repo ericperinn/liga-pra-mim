@@ -7,6 +7,8 @@
 - 🌐 Voice or text chat with the same assistant: https://main.d3197h98vf4n1z.amplifyapp.com
 - 💻 Code, architecture and evaluation: https://github.com/ericperinn/liga-pra-mim
 
+> **Status today:** AWS paused this account's access to Amazon Bedrock for verification on Sept 30, one day before the deadline (a review case is open). The phone line and the website are live and answering in **essential mode**: guided questions running the same official rules and the same CRAS list, without the language model. See [What happened the day before the deadline](#what-happened-the-day-before-the-deadline).
+
 ---
 
 ## The problem
@@ -75,6 +77,20 @@ I had **never used AWS** before this hackathon. I built everything in conversati
 - built the **website**, recorded the demo with Playwright and published the site to Amplify.
 
 Proof of the connection: the deployment history in CloudFormation, the commit history, and screenshots of the agent session running `aws` and `cdk` commands (attached).
+
+## What happened the day before the deadline
+
+On September 30, after the evaluation had passed 25 of 25 conversations, AWS's fraud-prevention team paused this new account's access to Amazon Bedrock for verification: *"Access to Bedrock models is not allowed for this account."* Every other AWS service kept working. A support case was opened right away.
+
+A helpline cannot go silent on someone who finally found the courage to call. So instead of a broken demo, Liga pra Mim got an **essential mode** in one day:
+
+- If the model fails, the same phone line and chat continue with **fixed, guided questions**: how many people live in the house, total income, someone 65 or older, a disability (including autism), children by age.
+- Spoken answers are parsed without AI: "trezentos e cinquenta", "um salário mínimo", "just me", "three hundred".
+- The answers go into **the same unit-tested calculator** and **the same CRAS search**. "Altos, Piauí, Santa Inês" in a single sentence finds the right center.
+- A **cooldown** stops callers from waiting out retries; answers come back in under a second.
+- The website tells visitors honestly when it is running in essential mode.
+
+When Bedrock access returns, the conversational assistant comes back automatically. No redeploy is needed: the code already tries the model first. The essential mode stays as a safety net. A service for people who depend on it should never have a single point of failure.
 
 ## Impact and what's next
 

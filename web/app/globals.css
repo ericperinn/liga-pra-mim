@@ -380,6 +380,13 @@ main {
   font-size: var(--step--1);
 }
 
+.mode-note {
+  font-size: var(--step--1);
+  color: var(--tinta-suave);
+  border-left: 4px solid var(--laranja);
+  padding-left: 12px;
+}
+
 .composer {
   display: flex;
   gap: 10px;

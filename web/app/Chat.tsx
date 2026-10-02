@@ -23,6 +23,7 @@ export default function Chat({ lang }: { lang: Lang }) {
   const [voice, setVoice] = useState(true);
   const [listening, setListening] = useState(false);
   const [notice, setNotice] = useState("");
+  const [essential, setEssential] = useState(false);
   const recognition = useRef<Recognition>(null);
   const audio = useRef<HTMLAudioElement | null>(null);
   const log = useRef<HTMLOListElement>(null);
@@ -46,6 +47,7 @@ export default function Chat({ lang }: { lang: Lang }) {
     try {
       const reply = await sendChat(sessionId, clean, locale, voice);
       setMessages((m) => [...m, { from: "assistant", text: reply.fala }]);
+      setEssential(reply.modo === "essencial");
       if (voice && reply.audio) {
         audio.current = new Audio(`data:audio/mpeg;base64,${reply.audio}`);
         audio.current.play().catch(() => undefined);
@@ -158,6 +160,8 @@ export default function Chat({ lang }: { lang: Lang }) {
             {notice}
           </p>
         )}
+
+        {essential && <p className="mode-note">{t.essentialNote}</p>}
 
         <form className="composer" onSubmit={onSubmit}>
           <button

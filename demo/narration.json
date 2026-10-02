@@ -9,7 +9,7 @@
     {
       "id": "solution",
       "visual": "site:hero",
-      "text": "Liga pra Mim, which means Call for Me, is a phone line. You call, you talk, and an AI assistant explains which benefits your family may be entitled to, where to go, and what to bring."
+      "text": "[pt]Liga pra Mim[/pt], which means Call for Me, is a phone line. You call, you talk, and an assistant explains which benefits your family may be entitled to, where to go, and what to bring."
     },
     {
       "id": "call",
@@ -17,24 +17,34 @@
       "text": ""
     },
     {
-      "id": "web",
-      "visual": "site:chat",
-      "text": "The same assistant also answers on the web, by voice or text. It asks one question at a time, never asks for ID numbers, and never promises approval."
+      "id": "ai-answer",
+      "visual": "card:ai-answer",
+      "text": "This is a real answer from the assistant, powered by Claude on Amazon Bedrock, recorded during evaluation on September thirtieth. Asked for help in São Paulo, it searched the official list and read out the nearest center, a landmark and the phone number."
     },
     {
       "id": "architecture",
-      "visual": "image:../docs/architecture.png",
-      "text": "Under the hood, Amazon Connect and Lex handle the call. A Lambda function talks to Claude on Amazon Bedrock, and the model calls two tools: a calculator with the official 2026 rules, and the government's list of eight thousand six hundred social assistance centers."
+      "visual": "card:architecture",
+      "text": "Amazon Connect and Lex handle the call. A Lambda function talks to Claude on Amazon Bedrock, and the model calls two tools: a calculator with the official 2026 rules, and the government's list of eight thousand six hundred social assistance centers."
     },
     {
       "id": "evaluation",
       "visual": "card:evaluation",
-      "text": "We tested it with twenty-five real conversations in Portuguese and English. It passed all twenty-five. And if the AI ever goes down, an essential mode keeps the line answering."
+      "text": "It was tested with twenty-five real conversations in Portuguese and English, and it passed all twenty-five."
+    },
+    {
+      "id": "twist",
+      "visual": "card:twist",
+      "text": "Then, the day before the deadline, AWS paused this account's access to Bedrock for verification. A helpline cannot go silent on someone who finally found the courage to call. So an essential mode was built."
+    },
+    {
+      "id": "live",
+      "visual": "site:chat",
+      "text": "This is the live line today. The same official rules and the same list of centers, through simple guided questions, answering in under a second."
     },
     {
       "id": "impact",
       "visual": "site:impact",
-      "text": "Built from zero with Claude Code, by someone who had never used AWS before. Because a right you can't find is a right you don't have."
+      "text": "[pt]Liga pra Mim[/pt] is my first project on AWS. Because a right you can't find is a right you don't have."
     },
     {
       "id": "end",

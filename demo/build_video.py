@@ -23,7 +23,7 @@ OUT = HERE / "out"
 WORK = OUT / "build"
 W, H, FPS = 1280, 720, 30
 GAP = 0.8  # breathing room after each narration line
-MAX_SPEEDUP = 1.6
+MAX_SPEEDUP = 2.6
 
 FF = shutil.which("ffmpeg") or glob.glob(
     str(Path.home() / "AppData/Local/Microsoft/WinGet/Packages/Gyan.FFmpeg*/*/bin/ffmpeg.exe")
@@ -49,15 +49,70 @@ CARD_CSS = """
   .row { display:flex; align-items:baseline; gap:20px; border-top:6px solid #e8741e; padding:18px 0 10px; }
   .row b { font-family:'Familjen Grotesk',sans-serif; font-size:56px; min-width:4.2ch; }
   .small { font-size:20px; }
+  .arch-title { position:absolute; top:44px; left:72px; font-family:'Familjen Grotesk',sans-serif; font-size:40px; font-weight:700; }
+  .arch { position:absolute; left:72px; right:72px; top:150px; display:flex; align-items:center; gap:18px; }
+  .lanes { display:flex; flex-direction:column; gap:26px; }
+  .lane { display:flex; align-items:center; gap:10px; font-size:30px; color:#e8741e; }
+  .pill { display:inline-flex; flex-direction:column; justify-content:center; background:#fff; border:2px solid #1f4e9a;
+          border-radius:12px; padding:10px 14px; font-size:21px; color:#1b2233; line-height:1.2; min-height:58px; box-sizing:border-box; }
+  .pill small { font-size:15px; color:#4a5366; }
+  .src { border-color:#1b2233; background:#1b2233; color:#fff; }
+  .arrow { font-size:34px; color:#e8741e; }
+  .brain { background:#e8741e; color:#1b2233; border-radius:16px; padding:22px 20px; font-size:22px; text-align:center; line-height:1.25; }
+  .brain b { display:block; font-family:'Familjen Grotesk',sans-serif; font-size:30px; }
+  .ai { display:flex; flex-direction:column; gap:14px; }
+  .strong { background:#1f4e9a; color:#fff; font-size:22px; }
+  .tool { border-style:dashed; }
+  .notes { position:absolute; left:72px; right:72px; bottom:150px; display:flex; gap:16px; }
+  .notes span { flex:1; border-top:6px solid #e8741e; padding-top:10px; font-size:19px; color:#4a5366; line-height:1.35; }
+  .notes b { color:#1b2233; }
 </style>"""
 
 CARDS = {
     "title": """<div class="dome"></div><div><h1>Liga pra Mim</h1>
         <p>An AI helpline anyone can call.</p><p>No app. No internet. No reading required.</p></div>""",
+    "architecture": """<div class="arch-title">How it works</div>
+        <div class="arch">
+          <div class="lanes">
+            <div class="lane"><span class="pill src">Any phone</span><span class="arrow">&rarr;</span>
+              <span class="pill">Amazon Connect<small>phone number</small></span><span class="arrow">&rarr;</span>
+              <span class="pill">Amazon Lex<small>speech &#8644; text</small></span></div>
+            <div class="lane"><span class="pill src">Website</span><span class="arrow">&rarr;</span>
+              <span class="pill">AWS Amplify<small>Next.js site</small></span><span class="arrow">&rarr;</span>
+              <span class="pill">API Gateway<small>+ Amazon Polly voice</small></span></div>
+          </div>
+          <span class="arrow">&rarr;</span>
+          <div class="brain">AWS Lambda<b>the brain</b></div>
+          <span class="arrow">&rarr;</span>
+          <div class="ai">
+            <span class="pill strong">Claude on Amazon Bedrock</span>
+            <span class="pill tool">Benefit rules calculator<small>official 2026 rules, tested</small></span>
+            <span class="pill tool">CRAS locator<small>8,641 official centers</small></span>
+          </div>
+        </div>
+        <div class="notes">
+          <span><b>Essential mode:</b> guided questions with the same rules if the AI is down</span>
+          <span><b>Amazon DynamoDB:</b> 24-hour memory and anonymous impact stats</span>
+          <span><b>AWS CDK:</b> the whole stack is infrastructure as code</span>
+        </div>""",
+    "ai-answer": """<div style="width:100%">
+        <p class="small" style="margin-bottom:22px">Real answer from Claude on Amazon Bedrock &middot; recorded during evaluation, Sept 30, 2026</p>
+        <div style="background:#fbe3cf;border-radius:18px 18px 4px 18px;padding:18px 24px;margin:0 0 18px auto;max-width:780px;font-size:26px">
+          Where is the nearest social assistance center (CRAS) in S&atilde;o Paulo? I live in Jardim Santa F&eacute;.</div>
+        <div style="background:#dfe7f4;border-radius:18px 18px 18px 4px;padding:20px 26px;max-width:960px;font-size:25px;line-height:1.45">
+          Hello! The closest CRAS to you is <b>CRAS Anhanguera</b>, right in your neighborhood, Jardim Santa F&eacute;.
+          The address is <b>Avenida Piero Tricca, 27</b>, next to Igreja Universal. It's open 5 days a week, 10 hours a day.
+          You can also call them at <b>1 1, 3 9 1 1, 3 9 0 6</b> if you want to confirm the exact hours.
+          Would you like the information for another CRAS nearby, or can I help you with something else?</div></div>""",
+    "twist": """<div class="dome" style="width:220px;height:190px;filter:grayscale(.6)"></div><div>
+        <h2>Sept 30: Bedrock access paused</h2>
+        <p>AWS paused this account's access to Bedrock for verification, one day before the deadline.</p>
+        <p class="big" style="margin-top:28px">A helpline can't go silent.</p>
+        <p>Essential mode: guided questions, the same official rules, the same list of 8,641 CRAS centers.</p></div>""",
     "evaluation": """<div style="width:100%"><h2>Measured, not assumed</h2>
         <div class="row"><b>25/25</b><p>real conversations passed, in Portuguese and English</p></div>
         <div class="row"><b>65</b><p>unit tests for the rules, the CRAS search and the handlers</p></div>
-        <div class="row"><b>0</b><p>dead air: an essential mode answers if the AI is down</p></div></div>""",
+        <div class="row"><b>8,641</b><p>official CRAS centers the assistant can direct people to</p></div></div>""",
     "call": """<div class="dome" style="width:220px;height:190px"></div><div><h2>A real call</h2>
         <p>Portuguese, with English subtitles.</p><p class="big">""" + PHONE + "</p></div>",
     "end": f"""<div class="dome" style="width:220px;height:190px"></div><div><h2>Call it. Try it.</h2>
@@ -91,25 +146,54 @@ def render_cards(names: set[str]) -> dict[str, Path]:
     return paths
 
 
-def synthesize(seg_id: str, text: str, voice: str) -> Path:
-    digest = hashlib.sha1(f"{voice}|{text}".encode()).hexdigest()[:10]
-    path = WORK / f"narr-{seg_id}-{digest}.mp3"
-    if path.exists():
-        return path
-    if os.environ.get("NARRATION") == "silent":  # offline preview: silence lasting about as long as the speech
-        ffmpeg("-f", "lavfi", "-i", "anullsrc=r=24000:cl=mono", "-t", f"{len(text.split()) / 2.6:.2f}", str(path))
-        return path
+PT_VOICE = "Thiago"  # Brazilian voice for Portuguese names inside English narration
+PT_SPAN = re.compile(r"\[pt\](.*?)\[/pt\]")
+
+
+def plain(text: str) -> str:
+    return PT_SPAN.sub(r"", text)
+
+
+def _polly(text: str, voice: str, path: Path) -> None:
     import boto3
 
     polly = boto3.client("polly", region_name="us-east-1")
     for engine in ("generative", "neural"):
         try:
-            audio = polly.synthesize_speech(Text=text, VoiceId=voice, Engine=engine, OutputFormat="mp3")
+            audio = polly.synthesize_speech(Text=text, VoiceId=voice, Engine=engine, OutputFormat="mp3", SampleRate="24000")
             path.write_bytes(audio["AudioStream"].read())
-            return path
+            return
         except polly.exceptions.ClientError:
             continue
-    raise RuntimeError(f"Polly could not synthesize {seg_id}")
+    raise RuntimeError(f"Polly could not synthesize: {text[:40]}")
+
+
+def synthesize(seg_id: str, text: str, voice: str) -> Path:
+    """English narration; spans marked [pt]...[/pt] are spoken by a Brazilian voice and stitched in."""
+    digest = hashlib.sha1(f"{voice}|{PT_VOICE}|{text}".encode()).hexdigest()[:10]
+    path = WORK / f"narr-{seg_id}-{digest}.mp3"
+    if path.exists():
+        return path
+    if os.environ.get("NARRATION") == "silent":  # offline preview: silence lasting about as long as the speech
+        ffmpeg("-f", "lavfi", "-i", "anullsrc=r=24000:cl=mono", "-t", f"{len(plain(text).split()) / 2.6:.2f}", str(path))
+        return path
+    parts, last = [], 0
+    for m in PT_SPAN.finditer(text):
+        parts += [(text[last:m.start()], voice), (m.group(1), PT_VOICE)]
+        last = m.end()
+    parts.append((text[last:], voice))
+    pieces = []
+    for i, (chunk, v) in enumerate(p for p in parts if p[0].strip()):
+        piece = WORK / f"part-{seg_id}-{digest}-{i}.mp3"
+        _polly(chunk.strip(), v, piece)
+        pieces.append(piece)
+    if len(pieces) == 1:
+        pieces[0].replace(path)
+        return path
+    inputs = [a for piece in pieces for a in ("-i", str(piece))]
+    ffmpeg(*inputs, "-filter_complex", "".join(f"[{i}:a]" for i in range(len(pieces))) + f"concat=n={len(pieces)}:v=0:a=1",
+           "-ar", "24000", "-ac", "1", str(path))
+    return path
 
 
 def video_filter(extra: str = "") -> str:
@@ -188,7 +272,7 @@ def main() -> None:
             if seg["visual"].startswith("site:"):
                 start, end = chapters[seg["visual"].split(":", 1)[1]]
                 length = max(length, (end - start) / MAX_SPEEDUP)
-            chunks, cursor = split_caption(seg["text"]), t
+            chunks, cursor = split_caption(plain(seg["text"])), t
             total_chars = sum(len(c) for c in chunks)
             for chunk in chunks:
                 span = spoken * len(chunk) / total_chars
@@ -216,8 +300,8 @@ def main() -> None:
            "-filter_complex", mix, "-map", "0:v", "-map", "[a]",
            "-vf", f"subtitles=captions.srt:force_style='{style}'",
            "-c:v", "libx264", "-crf", "20", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart",
-           "-t", f"{t:.2f}", "../liga-pra-mim-demo.mp4", cwd=WORK)
-    print(f"total {t:.1f}s -> {OUT / 'liga-pra-mim-demo.mp4'}")
+           "-t", f"{t:.2f}", "../liga-pra-mim-demo-v2.mp4", cwd=WORK)
+    print(f"total {t:.1f}s -> {OUT / "liga-pra-mim-demo-v2.mp4"}")
 
 
 if __name__ == "__main__":

@@ -61,7 +61,7 @@ def chat(body: dict) -> dict:
         logger.exception("falha ao gerar resposta")
         reply = brain.Reply(fala=MENSAGENS[locale]["erro"])
 
-    payload = {"fala": reply.fala, "beneficios": reply.beneficios, "encerrar": reply.encerrar}
+    payload = {"fala": reply.fala, "beneficios": reply.beneficios, "encerrar": reply.encerrar, "modo": reply.modo}
     if body.get("voz"):
         try:
             payload["audio"] = synthesize(reply.fala, locale)
