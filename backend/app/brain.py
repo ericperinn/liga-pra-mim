@@ -4,6 +4,7 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import essential
 import tools
 
 # "bedrock" (default) or "anthropic" (Claude API, key read from SSM) — the fallback if Bedrock access is lost.
@@ -14,6 +15,9 @@ TABLE_NAME = os.environ.get("TABLE_NAME", "")
 AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
 MAX_HISTORY_MESSAGES = 30
 MAX_TOOL_ROUNDS = 3
+# After the model fails, skip it for a while so each caller turn doesn't wait out the retries again.
+LLM_COOLDOWN_SECONDS = {"permanente": 600, "temporaria": 120}
+_llm_down_until = 0.0
 HISTORY_TTL_SECONDS = 24 * 3600
 
 KNOWLEDGE = (Path(__file__).parent / "knowledge.md").read_text(encoding="utf-8")
@@ -37,7 +41,7 @@ Sobre documentos, diga exatamente o que está na base de conhecimento: para o Ca
 
 Regras de segurança:
 - Nunca peça CPF, NIS, senha, dados bancários ou nome completo. Se a pessoa quiser falar, diga que não precisa.
-- Nunca prometa que a pessoa vai receber: nunca diga "tem sim", "tem direito" sem o "pode", "você vai receber" ou "com certeza". Diga "pelo que você me contou, você pode ter direito" e explique que quem confirma é o CRAS ou o INSS.
+- Nunca prometa que a pessoa vai receber: nunca diga "tem sim", "tem direito" sem o "pode", "você vai receber" ou "com certeza". Em inglês, a mesma regra: nunca "you will get", "you can get", "she gets" ou "you are entitled"; diga "you may be entitled to" ou "she may qualify for". Diga "pelo que você me contou, você pode ter direito" e explique que quem confirma é o CRAS ou o INSS.
 - Use somente a base de conhecimento. Se não souber, diga que não sabe e indique o CRAS ou o Disque Social 121.
 - Quando fizer sentido, avise que ninguém do governo cobra para fazer cadastro e que pedir PIX ou senha é golpe.
 - Se a pessoa falar de emergência, violência, fome grave ou vontade de se machucar, dê primeiro o número certo: SAMU 192, Polícia 190, Central da Mulher 180, CVV 188.
@@ -227,14 +231,40 @@ def ask_model(history: list[dict], user_text: str, locale: str) -> Reply:
     return reply
 
 
+def _failure_kind(exc: Exception) -> str:
+    status = getattr(exc, "status_code", None)
+    return "permanente" if status in (400, 401, 403, 404) else "temporaria"
+
+
+def llm_available() -> bool:
+    return time.time() >= _llm_down_until
+
+
+def _essential_reply(session_id: str, locale: str, user_text: str) -> Reply:
+    out = essential.respond(session_id, locale, user_text, _get_table())
+    return Reply(fala=out["fala"], beneficios=out["beneficios"], encerrar=out["encerrar"], ferramentas=out["ferramentas"])
+
+
 def respond(session_id: str, locale: str, user_text: str, canal: str = "telefone") -> Reply:
+    global _llm_down_until
     t0 = time.perf_counter()
     history = load_history(session_id)
     t1 = time.perf_counter()
-    reply = ask_model(history, user_text, locale)
+    modo = "ia"
+    in_essential = essential.load_state(session_id, _get_table()) is not None
+    if in_essential or not llm_available():
+        reply, modo = _essential_reply(session_id, locale, user_text), "essencial"
+    else:
+        try:
+            reply = ask_model(history, user_text, locale)
+        except Exception as exc:
+            kind = _failure_kind(exc)
+            _llm_down_until = time.time() + LLM_COOLDOWN_SECONDS[kind]
+            print(json.dumps({"falha_modelo": type(exc).__name__, "tipo": kind, "detalhe": str(exc)[:300]}))
+            reply, modo = _essential_reply(session_id, locale, user_text), "essencial"
     t2 = time.perf_counter()
     save_turn(session_id, locale, history, user_text, reply, canal)
     t3 = time.perf_counter()
     print(json.dumps({"tempo_ms": {"historico": round((t1 - t0) * 1000), "modelo": round((t2 - t1) * 1000),
-                                   "salvar": round((t3 - t2) * 1000)}, "turnos": len(history) // 2}))
+                                   "salvar": round((t3 - t2) * 1000)}, "turnos": len(history) // 2, "modo": modo}))
     return reply
