@@ -40,6 +40,9 @@ flowchart LR
     brain --> bedrock["Amazon Bedrock<br/>Claude Haiku 4.5"]
     bedrock -. ferramenta .-> calc["Calculadora de direitos<br/>regras oficiais de 2026, com testes"]
     bedrock -. ferramenta .-> cras["Busca de CRAS<br/>8.641 centros · Censo SUAS 2023"]
+    brain -. plano B .-> essential["Modo essencial<br/>perguntas guiadas, sem IA<br/>(se o modelo cair)"]
+    essential --> calc
+    essential --> cras
     brain --> ddb[("Amazon DynamoDB<br/>memória da conversa (apaga em 24 h)<br/>+ estatísticas anônimas")]
     timer["Amazon EventBridge<br/>a cada 4 min"] -. mantém aquecido .-> brain
 ```
@@ -55,10 +58,11 @@ Um cérebro, duas portas: a ligação e o site usam o mesmo código, o mesmo pro
 | Claude Haiku 4.5 + aquecimento | Respostas de 2 a 4 s são aceitáveis numa ligação; o aquecimento agendado mantém o cache do prompt ativo para ninguém esperar 15 s. |
 | Número dos EUA | Liberado na hora e fácil para jurados internacionais ligarem; o número +55 está no roadmap. |
 | Sem dados pessoais | Nada que identifique a pessoa é pedido ou guardado. O texto da conversa é apagado em 24 h; ficam só contadores anônimos para o painel de impacto. |
+| Modo essencial (sem IA) | Se a IA falhar ou ficar indisponível, a ligação continua com perguntas fixas, leitura de números falados e a mesma calculadora e busca de CRAS. Um intervalo de espera evita que cada pessoa aguarde novas tentativas. Criado depois que o acesso ao Bedrock foi pausado para verificação da conta durante o hackathon. |
 
 ## Avaliação
 
-O arquivo [`backend/evals/EVALUATION.md`](backend/evals/EVALUATION.md) roda **25 conversas reais** com a IA (20 em português e 5 em inglês) e confere se ela usou a ferramenta certa, entendeu a família, chegou ao resultado exigido pelas regras oficiais e respeitou as regras de segurança. Há ainda **35 testes unitários** da calculadora, da busca de CRAS e dos handlers.
+O arquivo [`backend/evals/EVALUATION.md`](backend/evals/EVALUATION.md) roda **25 conversas reais** com a IA (20 em português e 5 em inglês) e confere se ela usou a ferramenta certa, entendeu a família, chegou ao resultado exigido pelas regras oficiais e respeitou as regras de segurança. Há ainda **65 testes unitários** da calculadora, da busca de CRAS, dos handlers e do modo essencial.
 
 ```bash
 cd backend && python -m pytest -q          # testes unitários, sem AWS

@@ -40,6 +40,9 @@ flowchart LR
     brain --> bedrock["Amazon Bedrock<br/>Claude Haiku 4.5"]
     bedrock -. tool use .-> calc["Eligibility calculator<br/>official 2026 rules, unit-tested"]
     bedrock -. tool use .-> cras["CRAS locator<br/>8,641 centers · Censo SUAS 2023"]
+    brain -. fallback .-> essential["Essential mode<br/>guided questions, no AI<br/>(if the model is down)"]
+    essential --> calc
+    essential --> cras
     brain --> ddb[("Amazon DynamoDB<br/>conversation memory (24 h TTL)<br/>+ anonymous impact stats")]
     timer["Amazon EventBridge<br/>every 4 min"] -. keeps warm .-> brain
 ```
@@ -55,10 +58,11 @@ One brain, two doors: the phone call and the website run the same code, prompt, 
 | Claude Haiku 4.5 + warm-up | ~2–4 s per answer is acceptable on a call; a scheduled warm-up keeps the prompt cache and schema compilation hot so no caller waits 15 s. |
 | US phone number | Claimed instantly and easy for international judges to call; a +55 number is on the roadmap. |
 | No personal data | Nothing that identifies the caller is requested or stored. Conversation text expires after 24 h; only anonymous counters remain for the impact panel. |
+| Essential mode (no AI) | If the model fails or is unavailable, the call continues with fixed questions, spoken-number parsing and the same calculator and CRAS search. A cooldown avoids making every caller wait out retries. Built after Bedrock access was paused for account verification during the hackathon. |
 
 ## Evaluation
 
-[`backend/evals/EVALUATION.md`](backend/evals/EVALUATION.md) runs **25 real conversations** (20 in Portuguese, 5 in English) against the live model and checks that the assistant called the right tool, understood the family, reached the result required by the official rules, and followed the safety rules. Plus **35 unit tests** for the calculator, the CRAS search and the handlers.
+[`backend/evals/EVALUATION.md`](backend/evals/EVALUATION.md) runs **25 real conversations** (20 in Portuguese, 5 in English) against the live model and checks that the assistant called the right tool, understood the family, reached the result required by the official rules, and followed the safety rules. Plus **65 unit tests** for the calculator, the CRAS search, the handlers and the essential mode.
 
 ```bash
 cd backend && python -m pytest -q          # unit tests, no AWS needed
