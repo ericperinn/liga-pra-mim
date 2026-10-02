@@ -13,6 +13,7 @@ import hashlib
 import json
 import re
 import shutil
+from xml.sax.saxutils import escape
 import subprocess
 from pathlib import Path
 
@@ -146,31 +147,27 @@ def render_cards(names: set[str]) -> dict[str, Path]:
     return paths
 
 
-PT_VOICE = "Thiago"  # Brazilian voice for Portuguese names inside English narration
+# The generative engine sounds the most natural but mispronounces Portuguese names and ignores <phoneme>;
+# so each [pt]name[/pt] is spoken by the same voice on the neural engine with an IPA hint and stitched in.
 PT_SPAN = re.compile(r"\[pt\](.*?)\[/pt\]")
+PRONUNCIATION = {"Liga pra Mim": "ˈliɡə pɹə ˈmin"}
 
 
 def plain(text: str) -> str:
-    return PT_SPAN.sub(r"", text)
+    return PT_SPAN.sub(lambda m: m.group(1), text)
 
 
-def _polly(text: str, voice: str, path: Path) -> None:
+def _polly(text: str, voice: str, engine: str, path: Path) -> None:
     import boto3
 
     polly = boto3.client("polly", region_name="us-east-1")
-    for engine in ("generative", "neural"):
-        try:
-            audio = polly.synthesize_speech(Text=text, VoiceId=voice, Engine=engine, OutputFormat="mp3", SampleRate="24000")
-            path.write_bytes(audio["AudioStream"].read())
-            return
-        except polly.exceptions.ClientError:
-            continue
-    raise RuntimeError(f"Polly could not synthesize: {text[:40]}")
+    kwargs = {"TextType": "ssml"} if text.startswith("<speak>") else {}
+    audio = polly.synthesize_speech(Text=text, VoiceId=voice, Engine=engine, OutputFormat="mp3", SampleRate="24000", **kwargs)
+    path.write_bytes(audio["AudioStream"].read())
 
 
 def synthesize(seg_id: str, text: str, voice: str) -> Path:
-    """English narration; spans marked [pt]...[/pt] are spoken by a Brazilian voice and stitched in."""
-    digest = hashlib.sha1(f"{voice}|{PT_VOICE}|{text}".encode()).hexdigest()[:10]
+    digest = hashlib.sha1(f"{voice}|hybrid|{text}".encode()).hexdigest()[:10]
     path = WORK / f"narr-{seg_id}-{digest}.mp3"
     if path.exists():
         return path
@@ -179,20 +176,34 @@ def synthesize(seg_id: str, text: str, voice: str) -> Path:
         return path
     parts, last = [], 0
     for m in PT_SPAN.finditer(text):
-        parts += [(text[last:m.start()], voice), (m.group(1), PT_VOICE)]
+        parts += [("en", text[last:m.start()]), ("pt", m.group(1))]
         last = m.end()
-    parts.append((text[last:], voice))
+    parts.append(("en", text[last:]))
+    parts = [(kind, chunk.strip(" ,")) for kind, chunk in parts if chunk.strip(" ,")]
+
     pieces = []
-    for i, (chunk, v) in enumerate(p for p in parts if p[0].strip()):
+    for i, (kind, chunk) in enumerate(parts):
         piece = WORK / f"part-{seg_id}-{digest}-{i}.mp3"
-        _polly(chunk.strip(), v, piece)
-        pieces.append(piece)
+        if kind == "pt":
+            ssml = f'<speak><phoneme alphabet="ipa" ph="{PRONUNCIATION[chunk]}">{escape(chunk)}</phoneme></speak>'
+            _polly(ssml, voice, "neural", piece)
+        else:
+            _polly(chunk, voice, "generative", piece)
+        pieces.append((kind, piece))
     if len(pieces) == 1:
-        pieces[0].replace(path)
+        pieces[0][1].replace(path)
         return path
-    inputs = [a for piece in pieces for a in ("-i", str(piece))]
-    ffmpeg(*inputs, "-filter_complex", "".join(f"[{i}:a]" for i in range(len(pieces))) + f"concat=n={len(pieces)}:v=0:a=1",
-           "-ar", "24000", "-ac", "1", str(path))
+
+    # trim the silence Polly leaves around each piece so the name flows into the sentence
+    filters, labels = [], []
+    for i, (kind, _) in enumerate(pieces):
+        trim = "silenceremove=start_periods=1:start_threshold=-45dB,areverse,silenceremove=start_periods=1:start_threshold=-45dB,areverse"
+        pad = ",apad=pad_dur=0.12" if kind == "pt" else ",apad=pad_dur=0.05"
+        filters.append(f"[{i}:a]aresample=24000,{trim}{pad}[p{i}]")
+        labels.append(f"[p{i}]")
+    graph = ";".join(filters) + ";" + "".join(labels) + f"concat=n={len(pieces)}:v=0:a=1"
+    inputs = [a for _, piece in pieces for a in ("-i", str(piece))]
+    ffmpeg(*inputs, "-filter_complex", graph, "-ac", "1", str(path))
     return path
 
 
@@ -290,7 +301,7 @@ def main() -> None:
         "".join(f"{n}\n{srt_time(a)} --> {srt_time(b)}\n{txt}\n\n" for n, (a, b, txt) in enumerate(cues, 1)),
         encoding="utf-8")
 
-    style = "FontName=Arial,FontSize=19,PrimaryColour=&H00FFFFFF,BackColour=&H99000000,BorderStyle=4,Outline=0,Shadow=0,MarginV=26"
+    style = "FontName=Arial,FontSize=19,PrimaryColour=&H00FFFFFF,BackColour=&H30000000,BorderStyle=4,Outline=0,Shadow=0,MarginV=26"
     music = (HERE / "music" / "dreamer.mp3").resolve()
     mix = (f"[1:a]volume=0.22,atrim=0:{t:.2f},afade=t=in:d=2,afade=t=out:st={max(0, t - 4):.2f}:d=4[m];"
            "[0:a]asplit=2[v1][v2];"
@@ -300,8 +311,8 @@ def main() -> None:
            "-filter_complex", mix, "-map", "0:v", "-map", "[a]",
            "-vf", f"subtitles=captions.srt:force_style='{style}'",
            "-c:v", "libx264", "-crf", "20", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart",
-           "-t", f"{t:.2f}", "../liga-pra-mim-demo-v2.mp4", cwd=WORK)
-    print(f"total {t:.1f}s -> {OUT / "liga-pra-mim-demo-v2.mp4"}")
+           "-t", f"{t:.2f}", "../liga-pra-mim-demo-v4.mp4", cwd=WORK)
+    print(f"total {t:.1f}s -> {OUT / "liga-pra-mim-demo-v4.mp4"}")
 
 
 if __name__ == "__main__":
