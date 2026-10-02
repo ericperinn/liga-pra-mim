@@ -5,6 +5,7 @@
 **Try it live**
 - 📞 Call **+1 (725) 333-6978** and press **2** for English
 - 🌐 Voice or text chat with the same assistant: https://main.d3197h98vf4n1z.amplifyapp.com
+- 🎬 2-minute demo video: https://main.d3197h98vf4n1z.amplifyapp.com/demo.mp4
 - 💻 Code, architecture and evaluation: https://github.com/ericperinn/liga-pra-mim
 
 > **Status today:** AWS paused this account's access to Amazon Bedrock for verification on Sept 30, one day before the deadline (a review case is open). The phone line and the website are live and answering in **essential mode**: guided questions running the same official rules and the same CRAS list, without the language model. See [What happened the day before the deadline](#what-happened-the-day-before-the-deadline).
@@ -76,7 +77,7 @@ I had **never used AWS** before this hackathon. I built everything in conversati
 - wrote and ran the **evaluation**, then fixed what it found;
 - built the **website**, recorded the demo with Playwright and published the site to Amplify.
 
-Proof of the connection: the deployment history in CloudFormation, the commit history, and screenshots of the agent session running `aws` and `cdk` commands (attached).
+Proof of the connection: `docs/proof-aws-cli.png` shows the agent session's AWS CLI calls, authenticated with `aws login` as the IAM user, against the live stack, phone number, Lambda functions and Amplify app. The CloudFormation deployment history and the commit history tell the rest.
 
 ## What happened the day before the deadline
 

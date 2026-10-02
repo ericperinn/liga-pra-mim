@@ -21,6 +21,7 @@ export const T = {
     heroTitle: "Um telefonema e ela descobre o que é dela por direito.",
     heroBody:
       "Milhões de brasileiros não leem bem, não têm internet ou nunca usaram um aplicativo. O Liga pra Mim atende qualquer telefone, conversa em português simples e explica quais benefícios a família pode ter, onde ir e o que levar.",
+    watchDemo: "Assista ao vídeo de 2 minutos (em inglês)",
     readMore: "Ler mais: os números por trás do problema",
     facts: [
       { text: "8,4 milhões de brasileiros com 15 anos ou mais não sabem ler nem escrever. 4,8 milhões deles têm 60 anos ou mais.", source: "IBGE, PNAD Contínua Educação 2025", url: "https://biblioteca.ibge.gov.br/visualizacao/livros/liv102286_informativo.pdf" },
@@ -81,6 +82,7 @@ export const T = {
     heroTitle: "One phone call, and she finds out what is hers by right.",
     heroBody:
       "Millions of Brazilians can't read well, have no internet or have never used an app. Liga pra Mim (\"Call for Me\") answers any phone, talks in plain Portuguese and explains which public benefits a family may be entitled to, where to go and what to bring.",
+    watchDemo: "Watch the 2-minute demo",
     readMore: "Read more: the numbers behind the problem",
     facts: [
       { text: "8.4 million Brazilians aged 15+ cannot read or write. 4.8 million of them are 60 or older.", source: "IBGE, PNAD Contínua Educação 2025", url: "https://biblioteca.ibge.gov.br/visualizacao/livros/liv102286_informativo.pdf" },

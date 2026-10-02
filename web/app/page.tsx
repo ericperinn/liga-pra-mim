@@ -33,6 +33,9 @@ export default function Home() {
             <p className="brand-line">{t.brandLine}</p>
             <h1>{t.heroTitle}</h1>
             <p className="lead">{t.heroBody}</p>
+            <a className="demo-link" href="/demo.mp4" target="_blank" rel="noopener">
+              ▶ {t.watchDemo}
+            </a>
             <details className="facts">
               <summary>{t.readMore}</summary>
               <ul>
